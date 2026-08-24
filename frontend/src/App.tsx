@@ -1,0 +1,72 @@
+import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
+import { BottomNav } from './components/BottomNav';
+import { Dashboard } from './pages/Dashboard';
+import { AssetList } from './pages/AssetList';
+import { AssetForm } from './pages/AssetForm';
+import { ProductionList } from './pages/ProductionList';
+import { ProductionForm } from './pages/ProductionForm';
+import { SaleList } from './pages/SaleList';
+import { SaleForm } from './pages/SaleForm';
+import { TransactionList } from './pages/TransactionList';
+import { TransactionForm } from './pages/TransactionForm';
+import { DebtList } from './pages/DebtList';
+import { DebtForm } from './pages/DebtForm';
+import { Settings } from './pages/Settings';
+
+const NAV_ITEMS = [
+  { to: '/', label: 'Dashboard', end: true },
+  { to: '/aset', label: 'Aset' },
+  { to: '/produksi', label: 'Produksi' },
+  { to: '/penjualan', label: 'Penjualan' },
+  { to: '/transaksi', label: 'Transaksi' },
+  { to: '/hutang', label: 'Hutang' },
+  { to: '/setting', label: 'Setting' },
+];
+
+function App() {
+  return (
+    <BrowserRouter>
+      <div className="app-shell">
+        <header className="top-header">
+          <div className="brand">Telur Tracker</div>
+          <nav className="top-nav">
+            {NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) => `top-nav-item${isActive ? ' top-nav-item-active' : ''}`}
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+        </header>
+        <main className="page-content">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/aset" element={<AssetList />} />
+            <Route path="/aset/new" element={<AssetForm />} />
+            <Route path="/aset/:id" element={<AssetForm />} />
+            <Route path="/produksi" element={<ProductionList />} />
+            <Route path="/produksi/new" element={<ProductionForm />} />
+            <Route path="/produksi/:id" element={<ProductionForm />} />
+            <Route path="/penjualan" element={<SaleList />} />
+            <Route path="/penjualan/new" element={<SaleForm />} />
+            <Route path="/penjualan/:id" element={<SaleForm />} />
+            <Route path="/transaksi" element={<TransactionList />} />
+            <Route path="/transaksi/new" element={<TransactionForm />} />
+            <Route path="/transaksi/:id" element={<TransactionForm />} />
+            <Route path="/hutang" element={<DebtList />} />
+            <Route path="/hutang/new" element={<DebtForm />} />
+            <Route path="/hutang/:id" element={<DebtForm />} />
+            <Route path="/setting" element={<Settings />} />
+          </Routes>
+        </main>
+        <BottomNav />
+      </div>
+    </BrowserRouter>
+  );
+}
+
+export default App;

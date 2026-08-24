@@ -1,0 +1,29 @@
+from datetime import date
+
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+
+from .. import crud, schemas
+from ..deps import get_db
+
+router = APIRouter(prefix="/api", tags=["dashboard"])
+
+
+@router.get("/dashboard", response_model=schemas.DashboardOverview)
+def get_dashboard(
+    period: str = Query("month"),
+    from_: date | None = Query(None, alias="from"),
+    to: date | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    return crud.get_dashboard_overview(db, period, from_, to)
+
+
+@router.get("/egg-prices", response_model=list[schemas.EggPriceOut])
+def get_egg_prices(db: Session = Depends(get_db)):
+    return crud.get_egg_prices(db)
+
+
+@router.post("/egg-prices/refresh", response_model=list[schemas.EggPriceOut])
+def refresh_egg_prices(db: Session = Depends(get_db)):
+    return crud.get_egg_prices(db, refresh=True)

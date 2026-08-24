@@ -1,0 +1,17 @@
+{
+  "name": "Telur Tracker",
+  "short_name": "Telur",
+  "description": "Pencatatan produksi, penjualan, dan keuangan usaha telur ayam",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#b45309",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
