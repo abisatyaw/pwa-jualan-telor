@@ -6,3 +6,6 @@ backend/app/routers/__pycache__/
 frontend/node_modules/
 frontend/dist/
 .claude/
+data/
+.env
+.venv/
