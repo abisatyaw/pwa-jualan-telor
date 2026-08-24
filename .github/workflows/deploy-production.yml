@@ -1,0 +1,31 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy to VPS (production)
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_KEY: ${{ secrets.VPS_PRODUCTION_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          install -m 600 /dev/null ~/.ssh/deploy_key
+          printf '%s\n' "$VPS_KEY" > ~/.ssh/deploy_key
+          cat > ~/.ssh/known_hosts <<'HOSTKEY'
+          103.59.160.57 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMVr0Cwz+xPN3vcWiRBaXSyeWmT9dAggeEBDon/xUaFm
+          HOSTKEY
+          sed -i 's/^          //' ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes \
+              -o UserKnownHostsFile=~/.ssh/known_hosts \
+              abi@"$VPS_HOST" "deploy penjualan-telur-tracker"
+          rm -f ~/.ssh/deploy_key

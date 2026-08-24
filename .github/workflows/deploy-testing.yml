@@ -1,0 +1,30 @@
+name: Deploy Testing
+
+on:
+  push:
+    branches: [develop]
+
+concurrency:
+  group: deploy-testing
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS (testing)
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_KEY: ${{ secrets.VPS_TESTING_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          install -m 600 /dev/null ~/.ssh/deploy_key
+          printf '%s\n' "$VPS_KEY" > ~/.ssh/deploy_key
+          cat > ~/.ssh/known_hosts <<'HOSTKEY'
+          103.59.160.57 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMVr0Cwz+xPN3vcWiRBaXSyeWmT9dAggeEBDon/xUaFm
+          HOSTKEY
+          sed -i 's/^          //' ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes \
+              -o UserKnownHostsFile=~/.ssh/known_hosts \
+              abi@"$VPS_HOST" "deploy penjualan-telur-tracker"
+          rm -f ~/.ssh/deploy_key
