@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from .. import crud, schemas
-from ..deps import get_db
+from ..deps import get_current_user, get_db, require_admin
 
-router = APIRouter(prefix="/api/productions", tags=["productions"])
+router = APIRouter(prefix="/api/productions", tags=["productions"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=list[schemas.ProductionOut])
@@ -40,7 +40,7 @@ def update_production(production_id: int, payload: schemas.ProductionUpdate, db:
     return crud.update_production(db, production, payload)
 
 
-@router.delete("/{production_id}")
+@router.delete("/{production_id}", dependencies=[Depends(require_admin)])
 def delete_production(production_id: int, db: Session = Depends(get_db)):
     production = crud.get_production(db, production_id)
     if production is None:

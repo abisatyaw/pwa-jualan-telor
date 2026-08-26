@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from .. import crud, schemas
-from ..deps import get_db
+from ..deps import get_current_user, get_db, require_admin
 
-router = APIRouter(prefix="/api/assets", tags=["assets"])
+router = APIRouter(prefix="/api/assets", tags=["assets"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=list[schemas.AssetOut])
@@ -36,7 +36,7 @@ def update_asset(asset_id: int, payload: schemas.AssetUpdate, db: Session = Depe
     return crud.asset_to_out(asset)
 
 
-@router.delete("/{asset_id}")
+@router.delete("/{asset_id}", dependencies=[Depends(require_admin)])
 def delete_asset(asset_id: int, db: Session = Depends(get_db)):
     asset = crud.get_asset(db, asset_id)
     if asset is None:

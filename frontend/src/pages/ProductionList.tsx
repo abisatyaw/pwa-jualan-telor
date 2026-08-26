@@ -3,10 +3,13 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { KpiCard } from '../components/KpiCard';
+import { useAuth } from '../context/AuthContext';
 import type { Production } from '../types';
 import { formatDate } from '../utils';
 
 export function ProductionList() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [productions, setProductions] = useState<Production[]>([]);
   const [group, setGroup] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -93,11 +96,13 @@ export function ProductionList() {
                     <span className="badge badge-active">{p.quantity_kg.toLocaleString('id-ID')} Kg</span>
                   </div>
                 </Link>
-                <div className="card-actions" style={{ marginTop: 8 }}>
-                  <button className="btn-icon" onClick={() => setDeleteTarget(p)}>
-                    🗑️ Hapus
-                  </button>
-                </div>
+                {isAdmin && (
+                  <div className="card-actions" style={{ marginTop: 8 }}>
+                    <button className="btn-icon" onClick={() => setDeleteTarget(p)}>
+                      🗑️ Hapus
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -125,9 +130,11 @@ export function ProductionList() {
                         <Link to={`/produksi/${p.id}`} className="btn-icon">
                           ✏️
                         </Link>
-                        <button className="btn-icon" onClick={() => setDeleteTarget(p)}>
-                          🗑️
-                        </button>
+                        {isAdmin && (
+                          <button className="btn-icon" onClick={() => setDeleteTarget(p)}>
+                            🗑️
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

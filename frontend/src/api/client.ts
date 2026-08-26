@@ -12,6 +12,8 @@ import type {
   SaleInput,
   Transaction,
   TransactionInput,
+  User,
+  UserCreateInput,
 } from '../types';
 
 const API_BASE = import.meta.env.DEV ? `http://${window.location.hostname}:8001/api` : '/api';
@@ -19,6 +21,7 @@ const API_BASE = import.meta.env.DEV ? `http://${window.location.hostname}:8001/
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     ...options,
   });
   if (!res.ok) {
@@ -36,6 +39,17 @@ function qs(params: Record<string, string | number | null | undefined>): string 
 }
 
 export const api = {
+  auth: {
+    me: () => request<User>('/auth/me'),
+    login: (username: string, password: string) =>
+      request<User>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+    logout: () => request<void>('/auth/logout', { method: 'POST' }),
+  },
+  users: {
+    list: () => request<User[]>('/users'),
+    create: (data: UserCreateInput) => request<User>('/users', { method: 'POST', body: JSON.stringify(data) }),
+    remove: (id: number) => request<{ deleted: boolean }>(`/users/${id}`, { method: 'DELETE' }),
+  },
   assets: {
     list: (params: { asset_type?: string; search?: string } = {}) => request<Asset[]>(`/assets${qs(params)}`),
     get: (id: number) => request<Asset>(`/assets/${id}`),
@@ -108,5 +122,8 @@ export const api = {
       }),
     removeOption: (id: number) =>
       request<{ deleted: boolean }>(`/settings/options/${id}`, { method: 'DELETE' }),
+    getKotakToKg: () => request<{ value: number }>('/settings/kotak-to-kg'),
+    updateKotakToKg: (value: number) =>
+      request<{ value: number }>('/settings/kotak-to-kg', { method: 'PUT', body: JSON.stringify({ value }) }),
   },
 };

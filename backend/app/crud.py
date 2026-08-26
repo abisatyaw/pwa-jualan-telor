@@ -1,10 +1,11 @@
+import os
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import models, schemas, scraper
+from . import models, schemas, scraper, security
 
 DEFAULT_OPTIONS: dict[str, list[str]] = {
     "asset_type": ["Kandang", "Peralatan", "Ayam", "Lainnya"],
@@ -29,14 +30,15 @@ DEFAULT_OPTIONS: dict[str, list[str]] = {
     "feed_type": ["Konsentrat", "Jagung", "Dedak", "Pakan Jadi (BR)", "Lainnya"],
 }
 
-KOTAK_TO_KG = 15
+DEFAULT_KOTAK_TO_KG = 15.0
+KOTAK_TO_KG_SETTING_KEY = "kotak_to_kg"
 
 
-def kg_equivalent(qty: float | None, unit: str | None) -> float:
+def kg_equivalent(qty: float | None, unit: str | None, kotak_to_kg: float) -> float:
     if not qty:
         return 0.0
     if unit and unit.strip().lower() == "kotak":
-        return qty * KOTAK_TO_KG
+        return qty * kotak_to_kg
     return qty
 
 
@@ -59,8 +61,21 @@ def get_options(db: Session, list_key: str) -> list[models.DropdownOption]:
     return list(db.scalars(stmt))
 
 
+class DuplicateOptionError(Exception):
+    pass
+
+
 def create_option(db: Session, payload: schemas.DropdownOptionCreate) -> models.DropdownOption:
-    option = models.DropdownOption(list_key=payload.list_key, value=payload.value)
+    value = payload.value.strip()
+    existing = db.scalars(
+        select(models.DropdownOption).where(
+            models.DropdownOption.list_key == payload.list_key,
+            func.lower(models.DropdownOption.value) == value.lower(),
+        )
+    ).first()
+    if existing is not None:
+        raise DuplicateOptionError()
+    option = models.DropdownOption(list_key=payload.list_key, value=value)
     db.add(option)
     db.commit()
     db.refresh(option)
@@ -106,6 +121,99 @@ def seed_egg_price_sources(db: Session) -> None:
             )
         )
     db.commit()
+
+
+def seed_default_settings(db: Session) -> None:
+    if db.get(models.Setting, KOTAK_TO_KG_SETTING_KEY) is None:
+        db.add(models.Setting(key=KOTAK_TO_KG_SETTING_KEY, value=str(DEFAULT_KOTAK_TO_KG)))
+        db.commit()
+
+
+def seed_admin_user(db: Session) -> None:
+    if db.scalars(select(models.User.id)).first() is not None:
+        return
+    username = os.getenv("ADMIN_USERNAME")
+    password = os.getenv("ADMIN_PASSWORD")
+    if not username or not password:
+        return
+    create_user(db, username, password, "admin")
+
+
+# ---------- Users ----------
+
+
+def get_user(db: Session, user_id: int) -> models.User | None:
+    return db.get(models.User, user_id)
+
+
+def get_user_by_username(db: Session, username: str) -> models.User | None:
+    return db.scalars(select(models.User).where(models.User.username == username)).first()
+
+
+def get_users(db: Session) -> list[models.User]:
+    return list(db.scalars(select(models.User).order_by(models.User.username)))
+
+
+def create_user(db: Session, username: str, password: str, role: str) -> models.User:
+    user = models.User(username=username, password_hash=security.hash_password(password), role=role)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def delete_user(db: Session, user: models.User) -> None:
+    db.delete(user)
+    db.commit()
+
+
+# ---------- Sessions ----------
+
+
+def create_session(db: Session, user: models.User) -> models.Session:
+    session = models.Session(
+        token=security.generate_token(),
+        user_id=user.id,
+        expires_at=datetime.utcnow() + security.SESSION_TTL,
+    )
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session
+
+
+def get_session_by_token(db: Session, token: str) -> models.Session | None:
+    return db.scalars(select(models.Session).where(models.Session.token == token)).first()
+
+
+def touch_session(db: Session, session: models.Session) -> None:
+    session.expires_at = datetime.utcnow() + security.SESSION_TTL
+    db.commit()
+
+
+def delete_session(db: Session, token: str) -> None:
+    session = get_session_by_token(db, token)
+    if session is not None:
+        db.delete(session)
+        db.commit()
+
+
+# ---------- Settings (scalar) ----------
+
+
+def get_kotak_to_kg(db: Session) -> float:
+    setting = db.get(models.Setting, KOTAK_TO_KG_SETTING_KEY)
+    return float(setting.value) if setting else DEFAULT_KOTAK_TO_KG
+
+
+def set_kotak_to_kg(db: Session, value: float) -> float:
+    setting = db.get(models.Setting, KOTAK_TO_KG_SETTING_KEY)
+    if setting is None:
+        db.add(models.Setting(key=KOTAK_TO_KG_SETTING_KEY, value=str(value)))
+    else:
+        setting.value = str(value)
+    db.commit()
+    return value
 
 
 # ---------- Asset ----------
@@ -561,13 +669,14 @@ def get_receivables(db: Session) -> list[schemas.ReceivableRow]:
 
 
 def get_stock_position(db: Session) -> schemas.StockPosition:
+    kotak_to_kg = get_kotak_to_kg(db)
     total_production_kg = sum(p.quantity_kg for p in db.scalars(select(models.Production)))
     purchase_transactions = db.scalars(
         select(models.DailyTransaction).where(models.DailyTransaction.category == "Pembelian Telor")
     )
-    total_purchased_kg = sum(kg_equivalent(t.qty, t.qty_unit) for t in purchase_transactions)
+    total_purchased_kg = sum(kg_equivalent(t.qty, t.qty_unit, kotak_to_kg) for t in purchase_transactions)
     egg_sales = db.scalars(select(models.Sale).where(models.Sale.product_type == "Telur"))
-    total_sold_kg = sum(kg_equivalent(s.quantity, s.unit) for s in egg_sales)
+    total_sold_kg = sum(kg_equivalent(s.quantity, s.unit, kotak_to_kg) for s in egg_sales)
     stock_kg = total_production_kg + total_purchased_kg - total_sold_kg
     egg_prices = get_egg_prices(db)
     return schemas.StockPosition(
@@ -575,7 +684,7 @@ def get_stock_position(db: Session) -> schemas.StockPosition:
         total_purchased_kg=round(total_purchased_kg, 2),
         total_sold_kg=round(total_sold_kg, 2),
         stock_kg=round(stock_kg, 2),
-        stock_kotak=round(stock_kg / KOTAK_TO_KG, 2),
+        stock_kotak=round(stock_kg / kotak_to_kg, 2),
         egg_prices=[schemas.EggPriceOut.model_validate(p) for p in egg_prices],
     )
 

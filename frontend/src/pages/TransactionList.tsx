@@ -3,10 +3,13 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { KpiCard } from '../components/KpiCard';
+import { useAuth } from '../context/AuthContext';
 import type { Transaction } from '../types';
 import { formatDate, formatRupiah } from '../utils';
 
 export function TransactionList() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [category, setCategory] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -102,11 +105,13 @@ export function TransactionList() {
                     </div>
                   )}
                 </Link>
-                <div className="card-actions" style={{ marginTop: 8 }}>
-                  <button className="btn-icon" onClick={() => setDeleteTarget(t)}>
-                    🗑️ Hapus
-                  </button>
-                </div>
+                {isAdmin && (
+                  <div className="card-actions" style={{ marginTop: 8 }}>
+                    <button className="btn-icon" onClick={() => setDeleteTarget(t)}>
+                      🗑️ Hapus
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -139,9 +144,11 @@ export function TransactionList() {
                         <Link to={`/transaksi/${t.id}`} className="btn-icon">
                           ✏️
                         </Link>
-                        <button className="btn-icon" onClick={() => setDeleteTarget(t)}>
-                          🗑️
-                        </button>
+                        {isAdmin && (
+                          <button className="btn-icon" onClick={() => setDeleteTarget(t)}>
+                            🗑️
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
