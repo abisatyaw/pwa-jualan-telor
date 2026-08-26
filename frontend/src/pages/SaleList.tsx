@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PaymentDialog } from '../components/PaymentDialog';
+import { useAuth } from '../context/AuthContext';
 import type { Sale } from '../types';
 import { PAYMENT_STATUS_LABELS } from '../types';
 import { formatDate, formatRupiah } from '../utils';
 
 export function SaleList() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [sales, setSales] = useState<Sale[]>([]);
   const [productType, setProductType] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
@@ -122,9 +125,11 @@ export function SaleList() {
                       💳 Update Bayar
                     </button>
                   )}
-                  <button className="btn-icon" onClick={() => setDeleteTarget(s)}>
-                    🗑️
-                  </button>
+                  {isAdmin && (
+                    <button className="btn-icon" onClick={() => setDeleteTarget(s)}>
+                      🗑️
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -172,9 +177,11 @@ export function SaleList() {
                         <Link to={`/penjualan/${s.id}`} className="btn-icon">
                           ✏️
                         </Link>
-                        <button className="btn-icon" onClick={() => setDeleteTarget(s)}>
-                          🗑️
-                        </button>
+                        {isAdmin && (
+                          <button className="btn-icon" onClick={() => setDeleteTarget(s)}>
+                            🗑️
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

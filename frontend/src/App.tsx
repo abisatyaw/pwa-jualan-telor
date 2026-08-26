@@ -12,6 +12,8 @@ import { TransactionForm } from './pages/TransactionForm';
 import { DebtList } from './pages/DebtList';
 import { DebtForm } from './pages/DebtForm';
 import { Settings } from './pages/Settings';
+import { Login } from './pages/Login';
+import { useAuth } from './context/AuthContext';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', end: true },
@@ -24,6 +26,16 @@ const NAV_ITEMS = [
 ];
 
 function App() {
+  const { user, loading, logout } = useAuth();
+
+  if (loading) {
+    return <div className="login-page">Memuat...</div>;
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+
   return (
     <BrowserRouter>
       <div className="app-shell">
@@ -41,6 +53,14 @@ function App() {
               </NavLink>
             ))}
           </nav>
+          <div className="top-header-user">
+            <span className="hint-text">
+              {user.username} · {user.role === 'admin' ? 'Admin' : 'User'}
+            </span>
+            <button className="btn btn-secondary" onClick={logout}>
+              Keluar
+            </button>
+          </div>
         </header>
         <main className="page-content">
           <Routes>

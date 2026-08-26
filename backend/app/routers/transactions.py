@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from .. import crud, schemas
-from ..deps import get_db
+from ..deps import get_current_user, get_db, require_admin
 
-router = APIRouter(prefix="/api/transactions", tags=["transactions"])
+router = APIRouter(prefix="/api/transactions", tags=["transactions"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=list[schemas.TransactionOut])
@@ -44,7 +44,7 @@ def update_transaction(transaction_id: int, payload: schemas.TransactionUpdate, 
     return crud.transaction_to_out(transaction)
 
 
-@router.delete("/{transaction_id}")
+@router.delete("/{transaction_id}", dependencies=[Depends(require_admin)])
 def delete_transaction(transaction_id: int, db: Session = Depends(get_db)):
     transaction = crud.get_transaction(db, transaction_id)
     if transaction is None:
