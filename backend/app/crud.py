@@ -129,14 +129,22 @@ def seed_default_settings(db: Session) -> None:
         db.commit()
 
 
+DEFAULT_ADMIN_USERNAME = "admin"
+DEFAULT_ADMIN_PASSWORD = "admin"
+
+
 def seed_admin_user(db: Session) -> None:
     if db.scalars(select(models.User.id)).first() is not None:
         return
-    username = os.getenv("ADMIN_USERNAME")
-    password = os.getenv("ADMIN_PASSWORD")
-    if not username or not password:
-        return
-    create_user(db, username, password, "admin")
+    env_username = os.getenv("ADMIN_USERNAME")
+    env_password = os.getenv("ADMIN_PASSWORD")
+    if not env_username or not env_password:
+        print(
+            "[seed_admin_user] ADMIN_USERNAME/ADMIN_PASSWORD not set - "
+            f"created default admin '{DEFAULT_ADMIN_USERNAME}'/'{DEFAULT_ADMIN_PASSWORD}'. "
+            "Change this password after logging in."
+        )
+    create_user(db, env_username or DEFAULT_ADMIN_USERNAME, env_password or DEFAULT_ADMIN_PASSWORD, "admin")
 
 
 # ---------- Users ----------

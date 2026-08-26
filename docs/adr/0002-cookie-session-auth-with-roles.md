@@ -8,6 +8,8 @@ backed by a server-side `sessions` table (opaque token → user_id, expires_at) 
 signed/JWT cookie: instant revocation (disabling a user takes effect immediately, no waiting out a
 token's lifetime) matters more here than avoiding a DB lookup per request, and at this app's scale
 that lookup is free. Sessions use a 30-day sliding expiration, refreshed on activity. There's no
-public signup — this is single-tenant (one business), and the first Admin account is seeded from
-`ADMIN_USERNAME`/`ADMIN_PASSWORD` env vars on startup if none exists yet, mirroring the existing
-`.env`-per-app deploy convention and the `seed_default_options` pattern already in `crud.py`.
+public signup — this is single-tenant (one business). The first Admin account is seeded on startup
+if none exists yet: from `ADMIN_USERNAME`/`ADMIN_PASSWORD` env vars if set, otherwise a hardcoded
+`admin`/`admin` fallback so the first deploy needs no `.env` edit or manual command. That fallback is
+a known-credentials risk accepted deliberately for a private, trusted-network single-tenant app — the
+seed logs a warning telling the operator to change the password after first login.
