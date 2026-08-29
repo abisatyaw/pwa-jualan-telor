@@ -3,8 +3,9 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
 from . import crud
 from .database import Base, SessionLocal, engine
@@ -37,6 +38,11 @@ app.add_middleware(
 
 @app.get("/health")
 async def health():
+    try:
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "degraded", "detail": "database unreachable"})
     return {"status": "ok"}
 
 

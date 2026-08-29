@@ -15,8 +15,8 @@ esac
 case "$APP_NAME:$ENVIRONMENT" in
   catering-tracker:production)        SERVICE="catering-production"; PORT=8000 ;;
   penjualan-telur-tracker:production) SERVICE="telur-production";     PORT=8001 ;;
-  catering-tracker:testing)           SERVICE="catering-testing";     PORT=6000 ;;
-  penjualan-telur-tracker:testing)    SERVICE="telur-testing";        PORT=6001 ;;
+  catering-tracker:testing)           SERVICE="catering-testing";     PORT=3000 ;;
+  penjualan-telur-tracker:testing)    SERVICE="telur-testing";        PORT=3001 ;;
   *) echo "FATAL: no port/service allocation for $APP_NAME ($ENVIRONMENT)" >&2; exit 1 ;;
 esac
 
