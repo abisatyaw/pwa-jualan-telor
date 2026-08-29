@@ -19,7 +19,7 @@ case "$APP_NAME:$ENVIRONMENT" in
   penjualan-telur-tracker:testing)    SERVICE="telur-testing";        PORT=3001 ;;
   *) echo "FATAL: no port/service allocation for $APP_NAME ($ENVIRONMENT)" >&2; exit 1 ;;
 esac
-
+ 
 EXPECTED_BRANCH="$([ "$ENVIRONMENT" = "production" ] && echo main || echo develop)"
 
 log() { echo "[deploy] $*"; }
