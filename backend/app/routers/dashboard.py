@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from .. import crud, schemas
-from ..deps import get_db
+from ..deps import get_current_user, get_db
 
-router = APIRouter(prefix="/api", tags=["dashboard"])
+router = APIRouter(prefix="/api", tags=["dashboard"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/dashboard", response_model=schemas.DashboardOverview)

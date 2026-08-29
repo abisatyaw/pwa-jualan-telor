@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { useAuth } from '../context/AuthContext';
 import type { Asset } from '../types';
 import { formatDate, formatRupiah } from '../utils';
 
 export function AssetList() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [assets, setAssets] = useState<Asset[]>([]);
   const [search, setSearch] = useState('');
   const [assetType, setAssetType] = useState('');
@@ -96,11 +99,13 @@ export function AssetList() {
                   </div>
                 )}
               </Link>
-              <div className="card-actions" style={{ marginTop: 8 }}>
-                <button className="btn-icon" onClick={() => setDeleteTarget(a)}>
-                  🗑️ Hapus
-                </button>
-              </div>
+              {isAdmin && (
+                <div className="card-actions" style={{ marginTop: 8 }}>
+                  <button className="btn-icon" onClick={() => setDeleteTarget(a)}>
+                    🗑️ Hapus
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -137,9 +142,11 @@ export function AssetList() {
                     <Link to={`/aset/${a.id}`} className="btn-icon">
                       ✏️
                     </Link>
-                    <button className="btn-icon" onClick={() => setDeleteTarget(a)}>
-                      🗑️
-                    </button>
+                    {isAdmin && (
+                      <button className="btn-icon" onClick={() => setDeleteTarget(a)}>
+                        🗑️
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

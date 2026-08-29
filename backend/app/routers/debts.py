@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from .. import crud, schemas
-from ..deps import get_db
+from ..deps import get_current_user, get_db, require_admin
 
-router = APIRouter(prefix="/api/debts", tags=["debts"])
+router = APIRouter(prefix="/api/debts", tags=["debts"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=list[schemas.DebtOut])
@@ -45,7 +45,7 @@ def record_payment(debt_id: int, payload: schemas.DebtPayment, db: Session = Dep
     return crud.debt_to_out(debt)
 
 
-@router.delete("/{debt_id}")
+@router.delete("/{debt_id}", dependencies=[Depends(require_admin)])
 def delete_debt(debt_id: int, db: Session = Depends(get_db)):
     debt = crud.get_debt(db, debt_id)
     if debt is None:

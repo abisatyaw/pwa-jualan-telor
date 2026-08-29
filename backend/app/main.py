@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -8,19 +9,28 @@ from sqlalchemy import text
 
 from . import crud
 from .database import Base, SessionLocal, engine
-from .routers import assets, dashboard, debts, production, sales, settings, transactions
+from .routers import assets, auth, dashboard, debts, production, sales, settings, transactions, users
 
 Base.metadata.create_all(bind=engine)
 
 with SessionLocal() as db:
     crud.seed_default_options(db)
     crud.seed_egg_price_sources(db)
+    crud.seed_default_settings(db)
+    crud.seed_admin_user(db)
 
 app = FastAPI(title="Telur Tracker")
 
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "http://localhost:3001,http://127.0.0.1:3001").split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -36,6 +46,8 @@ async def health():
     return {"status": "ok"}
 
 
+app.include_router(auth.router)
+app.include_router(users.router)
 app.include_router(assets.router)
 app.include_router(production.router)
 app.include_router(sales.router)

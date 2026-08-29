@@ -4,11 +4,14 @@ import { api } from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { KpiCard } from '../components/KpiCard';
 import { PaymentDialog } from '../components/PaymentDialog';
+import { useAuth } from '../context/AuthContext';
 import type { Debt } from '../types';
 import { DEBT_STATUS_LABELS } from '../types';
 import { formatDate, formatRupiah } from '../utils';
 
 export function DebtList() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [debts, setDebts] = useState<Debt[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -104,9 +107,11 @@ export function DebtList() {
                       💳 Update Bayar
                     </button>
                   )}
-                  <button className="btn-icon" onClick={() => setDeleteTarget(d)}>
-                    🗑️
-                  </button>
+                  {isAdmin && (
+                    <button className="btn-icon" onClick={() => setDeleteTarget(d)}>
+                      🗑️
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -148,9 +153,11 @@ export function DebtList() {
                         <Link to={`/hutang/${d.id}`} className="btn-icon">
                           ✏️
                         </Link>
-                        <button className="btn-icon" onClick={() => setDeleteTarget(d)}>
-                          🗑️
-                        </button>
+                        {isAdmin && (
+                          <button className="btn-icon" onClick={() => setDeleteTarget(d)}>
+                            🗑️
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

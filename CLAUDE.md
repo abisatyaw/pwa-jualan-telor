@@ -1,0 +1,95 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+"Telur Tracker" — a PWA for tracking an egg-farming/selling business (assets, production, sales, daily
+transactions/expenses, debts, dashboard). Indonesian-language UI and domain terms throughout the code
+(e.g. `hutang` = debt/receivable, `lunas` = paid off, `kandang` = coop). Backend is FastAPI + SQLAlchemy
+(SQLite by default), frontend is React 19 + TypeScript + Vite, served as one deployed app (FastAPI serves
+the built frontend as static files in production).
+
+## Commands
+
+Backend (run from `backend/`, or use `--app-dir backend` from repo root):
+```bash
+python -m venv .venv && .venv/bin/pip install -r requirements.txt   # setup
+.venv/bin/python -m uvicorn app.main:app --reload --port 8001       # dev server
+```
+There is no backend test suite or linter configured.
+
+Frontend (run from `frontend/`):
+```bash
+npm install
+npm run dev       # Vite dev server on port 3001, expects backend on 8001 (see api/client.ts)
+npm run build     # tsc -b && vite build -> frontend/dist
+npm run lint      # oxlint
+npm run preview
+```
+There is no frontend test suite configured.
+
+Local full-stack run on Windows: `deploy.bat` (builds frontend, sets up backend venv, serves everything
+from uvicorn on port 8001) and `run-frontend.cmd` (Vite dev server only, for hot-reload frontend work).
+
+## Architecture
+
+**Domain model → one router per resource.** Each of `assets`, `production`, `sales`, `transactions`
+(daily transactions = expenses), `debts` follows the same layered pattern:
+- `models.py` — SQLAlchemy table
+- `schemas.py` — pydantic `*Base` / `*Create` / `*Update` / `*Out` per resource (`*Out` schemas often add
+  computed fields not stored in the DB — see below)
+- `crud.py` — one section per resource with `get_*`, `create_*`, `update_*`, `delete_*`, and a
+  `*_to_out` mapper when the API response needs derived fields
+- `routers/<resource>.py` — thin FastAPI routes, all under `/api/<resource>`, calling straight into `crud`
+
+When adding a new resource or field, replicate this four-file pattern rather than introducing a different
+structure.
+
+**Derived/computed fields live in `crud.py` mappers, not on the model.** e.g. `asset_to_out` computes
+`monthly_depreciation`, `book_value`, and `current_age_weeks` from stored fields at read time;
+`sale_to_out` computes `remaining_amount`; `debt_to_out` computes `outstanding`/`status`. Follow this
+pattern for anything derivable rather than storing it redundantly.
+
+**Stock/unit conversion.** Egg quantities are tracked in mixed units (`Kg`, `Kotak`, etc.); `KOTAK_TO_KG`
+in `crud.py` is the fixed conversion factor and `kg_equivalent()` normalizes any qty/unit pair to kg. Any
+new code that aggregates sale/purchase/production quantities across units must go through this helper —
+see `get_stock_position` for the pattern (production + purchases − sales = stock).
+
+**Dashboard aggregation (`crud.py`, `routers/dashboard.py`).** `_period_range()` maps a period keyword
+(`today`/`week`/`month`/`year`/`custom`) to a date range; `get_dashboard_overview` fans out to per-domain
+summary functions (`get_production_summary`, `get_weekly_transactions`, `get_receivables`,
+`get_stock_position`) and combines them into one `DashboardOverview` payload consumed by the frontend
+`Dashboard` page.
+
+**Egg price scraping (`scraper.py`).** Best-effort scrapers for third-party public price pages with no
+stable API. Every source fetch is individually wrapped so a layout change or block degrades to
+`status="failed"` rather than crashing; results cache in the `egg_price_references` table and refresh
+when stale (>6h, see `get_egg_prices`) or on explicit refresh. Do not make scraper failures propagate as
+API errors — preserve the degrade-to-`failed` contract.
+
+**Dropdown options are data-driven**, not hardcoded enums: `DropdownOption` rows keyed by `list_key`
+(`asset_type`, `chicken_group`, `sale_product_type`, `sale_unit`, `transaction_category`, `feed_type`),
+seeded from `DEFAULT_OPTIONS` in `crud.py` on first boot, editable at runtime via the `settings` router
+and the frontend Settings page. When adding a new categorical field, prefer this mechanism over a fixed
+enum so users can extend it from the UI.
+
+**Payment/debt tracking pattern.** Both `Sale` and `Debt` track partial payments via `paid_amount` plus a
+dedicated `PATCH .../{id}/payment` endpoint (`record_sale_payment`, `record_debt_payment`) separate from
+the general `update_*`/PUT endpoint — this keeps balance-adjustment semantics (clamping to
+total/`amount`, status flips to `lunas`) out of the general edit path. Follow this split for any future
+partial-payment-style field.
+
+**Frontend routing (`App.tsx`)** mirrors the backend resources 1:1: each domain has a `List` page and a
+combined `Form` page used for both create (`/x/new`) and edit (`/x/:id`). `api/client.ts` is the single
+place HTTP calls are made — `API_BASE` points at `http://<host>:8001/api` in dev and `/api` in production
+(same-origin, since FastAPI serves the built frontend). Add new endpoints there rather than calling
+`fetch` directly from components.
+
+**Production deploy topology.** This app and a separate "catering-tracker" app share one VPS via
+`deploy.sh`, which derives environment (production/testing) and port from the directory path
+(`/srv/apps/<production|testing>/<app-name>`) and enforces the app is on the expected git branch
+(`main` for production, `develop` for testing) before restarting its systemd service. GitHub Actions
+(`.github/workflows/deploy-*.yml`) SSH into the VPS and invoke a remote `deploy` command on push to
+`develop` (testing, automatic) or manual dispatch on `main` (production). `DATABASE_URL` env var
+overrides the default SQLite path (`backend/app.db`) — see `database.py`.

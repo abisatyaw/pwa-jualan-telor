@@ -4,6 +4,37 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 PaymentStatus = Literal["lunas", "hutang"]
+UserRole = Literal["admin", "user"]
+
+
+# ---------- Auth / Users ----------
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(min_length=1)
+    password: str = Field(min_length=1)
+
+
+class UserCreate(BaseModel):
+    username: str = Field(min_length=3)
+    password: str = Field(min_length=8)
+    role: UserRole = "user"
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    username: str
+    role: UserRole
+    created_at: datetime
+
+
+# ---------- Settings (scalar) ----------
+
+
+class KotakConversion(BaseModel):
+    value: float = Field(gt=0)
 
 
 # ---------- Dropdown Options ----------

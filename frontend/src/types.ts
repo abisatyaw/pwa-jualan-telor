@@ -4,6 +4,23 @@ export interface DropdownOption {
   value: string;
 }
 
+// ---------- Auth / Users ----------
+
+export type UserRole = 'admin' | 'user';
+
+export interface User {
+  id: number;
+  username: string;
+  role: UserRole;
+  created_at: string;
+}
+
+export interface UserCreateInput {
+  username: string;
+  password: string;
+  role: UserRole;
+}
+
 // ---------- Asset ----------
 
 export interface AssetInput {
