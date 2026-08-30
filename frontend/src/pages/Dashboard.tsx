@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Bar,
   BarChart,
@@ -85,6 +86,13 @@ export function Dashboard() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Dashboard</h1>
+      </div>
+
+      <div className="quick-actions">
+        <Link to="/transaksi/new" className="btn btn-secondary">+ Transaksi</Link>
+        <Link to="/produksi/new" className="btn btn-secondary">+ Produksi</Link>
+        <Link to="/penjualan/new" className="btn btn-secondary">+ Penjualan</Link>
+        <Link to="/aset/status/new" className="btn btn-secondary">+ Update Status</Link>
       </div>
 
       <div className="filter-bar">
