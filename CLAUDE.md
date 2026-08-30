@@ -34,20 +34,39 @@ from uvicorn on port 8001) and `run-frontend.cmd` (Vite dev server only, for hot
 
 ## Branching & PRs
 
-**Never commit or push directly to `main` or `develop`.** Both are protected and drive deploys
-(`develop` → auto-deploy to testing, `main` → manual production deploy — see *Production deploy
-topology* below). Direct pushes are also rejected by the remote.
+Two long-lived branches:
+
+- **`main` — source of truth / production.** *Off-limits to the agent.* Never open a PR to `main`,
+  never merge into `main`, never push to `main`. Promoting `dev → main` is **exclusively the repo
+  owner's job**: they test the merged `dev` branch live, decide if it's ready, and do the `main`
+  merge and production deploy themselves. Do not open `dev → main` PRs, do not bring it up as a
+  next step — it is not the agent's concern.
+- **`dev` — integration branch.** Every agent change lands here, via PR. Merging a PR into `dev`
+  does **not** deploy anything — the owner triggers the testing deploy manually
+  (`Deploy Testing` workflow, `workflow_dispatch`) when they want to look at it.
+
+**Never commit or push directly to `main` or `dev`** — all work goes through a branch + PR into
+`dev`.
 
 Workflow for every change, no matter how small:
-1. Branch off `develop`: `git checkout develop && git pull && git checkout -b <type>/<short-name>`
+1. Branch off `dev`: `git checkout dev && git pull && git checkout -b <type>/<short-name>`
    where `<type>` is `feat` / `fix` / `chore` / `docs`.
-2. Commit and push that branch (`git push -u origin <branch>`).
-3. Open a PR **into `develop`**. Merging it deploys to testing automatically.
-4. Promote to production separately: a `develop` → `main` PR, then manually dispatch the
-   "Deploy Production" workflow.
+2. Test the change locally (localhost) — see *Commands*.
+3. Commit and push that branch (`git push -u origin <branch>`).
+4. Open a PR **with `--base dev`**. That is where the agent's responsibility ends — the owner
+   reviews, merges to `dev`, deploys testing, and eventually promotes to `main`.
 
 One feature or fix per branch/PR so it can be reviewed, tested, and reverted in isolation — don't
 bundle unrelated changes. Only create a commit or push when the user asks.
+
+### Stacked PRs
+
+When a change builds on another branch that hasn't merged yet, open its PR with that branch as the
+base (`gh pr create --base <parent-branch>`) — an ordinary GitHub PR with a non-default base. Once
+the parent merges into `dev`, rebase the child onto `dev`
+(`git rebase --onto dev <parent-branch> <child-branch>`) and the PR retargets automatically.
+Do **not** use `gh stack` / GitHub Stacks here: it pins the bottom PR of a stack to the repo's
+default branch (`main`), which this workflow forbids.
 
 ### Commit & PR messages
 
@@ -116,7 +135,8 @@ place HTTP calls are made — `API_BASE` points at `http://<host>:8001/api` in d
 **Production deploy topology.** This app and a separate "catering-tracker" app share one VPS via
 `deploy.sh`, which derives environment (production/testing) and port from the directory path
 (`/srv/apps/<production|testing>/<app-name>`) and enforces the app is on the expected git branch
-(`main` for production, `develop` for testing) before restarting its systemd service. GitHub Actions
-(`.github/workflows/deploy-*.yml`) SSH into the VPS and invoke a remote `deploy` command on push to
-`develop` (testing, automatic) or manual dispatch on `main` (production). `DATABASE_URL` env var
-overrides the default SQLite path (`backend/app.db`) — see `database.py`.
+(`main` for production, `dev` for testing) before restarting its systemd service. GitHub Actions
+(`.github/workflows/deploy-*.yml`) SSH into the VPS and invoke a remote `deploy` command — both
+`Deploy Testing` and `Deploy Production` are `workflow_dispatch` (manual). Nothing deploys on
+push. `DATABASE_URL` env var overrides the default SQLite path (`backend/app.db`) — see
+`database.py`. Both deploys are owner-operated only (see *Branching & PRs*).
