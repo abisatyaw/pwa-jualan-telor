@@ -25,7 +25,9 @@ needed, so AUTH-003 needs no work.
 
 ---
 
-## 2. FB status (from xlsx v1)
+## 2. FB status (from xlsx v2)
+
+`[»]` = in an open PR (stack #17, PRs #12–#21, all target `dev`).
 
 | FB | Title | xlsx status | Here |
 |----|-------|-------------|------|
@@ -34,21 +36,21 @@ needed, so AUTH-003 needs no work.
 | FB-003 | Rename to Cinz Farm | In Review (Test) | `[x]` |
 | FB-004 | Indonesian dates | In Review (Test) | `[x]` |
 | FB-005 | "Estimasi Margin" | In Review (Test) | `[x]` |
-| FB-006 | Weekly production histogram | Approved | `[»]` `feat/weekly-production-chart` |
+| FB-006 | Weekly production histogram | Approved | `[»]` #14 |
 | FB-007 | Dashboard production 3 dp | Approved | `[x]` |
-| FB-008 | FCR trend | Approved | `[»]` `feat/fcr-hdp-analytics` |
-| FB-009 | HDP graph | Approved | `[»]` `feat/fcr-hdp-analytics` |
-| FB-010 | QTY on Add Asset | Approved | `[»]` `feat/model-fields-api` (#12) |
-| FB-011 | Total acquisition value | Approved | `[»]` `feat/model-fields-api` (#12) |
-| FB-012 | Zero-book-value month/year | **Need Refinement** | `[✗]` target/example undefined |
-| FB-013 | Production kg 3 dp | Approved | `[»]` `feat/decimal-precision` |
-| FB-014 | Avg egg weight input | Approved | `[»]` `feat/model-fields-api` (#12) |
-| FB-015 | Sales qty 3 dp | Approved | `[»]` `feat/decimal-precision` |
-| FB-016 | Transaction QTY / unit price / total | Approved | `[»]` `feat/model-fields-api` (#12) |
-| FB-017 | Feed in karung + conversion | **Need Refinement** | `[✗]` Q-001/Q-002 |
-| FB-018 | "Update Status Aset" tab | **Need Refinement** | `[✗]` |
-| FB-019 | "Performance Financial" tab | **Need Refinement** | `[✗]` needs chart-of-accounts spec |
-| FB-020 | Streamline UI; categorise Settings | **Need Refinement** (Critical) | `[»]` `feat/ui-streamline` |
+| FB-008 | FCR trend | Approved | `[»]` #15 |
+| FB-009 | HDP graph | Approved | `[»]` #15 |
+| FB-010 | QTY on Add Asset | Approved | `[»]` #12 |
+| FB-011 | Total acquisition value | Approved | `[»]` #12 |
+| FB-012 | Zero-book-value month/year | New | `[»]` #19 |
+| FB-013 | Production kg 3 dp | Approved | `[»]` #13 |
+| FB-014 | Avg egg weight input | Approved | `[»]` #12 |
+| FB-015 | Sales qty 3 dp | Approved | `[»]` #13 |
+| FB-016 | Transaction QTY / unit price / total | Approved | `[»]` #12 |
+| FB-017 | Feed in karung + conversion | New | `[»]` #18 (factor via Setting, 0 until set) |
+| FB-018 | "Update Status Aset" tab | New | `[»]` #20 |
+| FB-019 | "Performance Financial" tab | New | `[»]` #21 (assumptions listed on the page) |
+| FB-020 | Streamline UI; categorise Settings | **Need Refinement** (Critical) | `[»]` #16 (Settings part only) |
 
 ---
 
@@ -67,10 +69,20 @@ needed, so AUTH-003 needs no work.
    `active_chicken_count(as_of_date)` per ADR 0005, FCR, HDP. Dashboard payload gains FCR + HDP
    trend series; two trend charts with target lines (FCR from `get_fcr_target()`, hidden when
    unset; HDP target from `get_hdp_target_percentage()`). FB-008/009.
-5. **`feat/ui-streamline`** — Settings page split into labelled, collapsible category groups; nav /
-   layout tidy-up. FB-020.
+5. **`feat/ui-streamline`** (#16) — Settings page split into labelled, collapsible category groups. FB-020.
+6. **`feat/feed-karung`** (#18) — feed qty in karung; `feed_consumption_kg` converts via
+   `kg_per_karung:<feed_type>` (0 until an admin sets it). FB-017.
+7. **`feat/asset-zero-date`** (#19) — `AssetOut.book_value_zero_date`; full-month depreciation
+   convention. FB-012.
+8. **`feat/asset-status-updates`** (#20) — `/api/asset-status-updates` + "Update Status Aset" page;
+   `active_quantity`; sold ⇒ prorated book-value write-off. FB-018.
+9. **`feat/performance-financial`** (#21) — `/api/financial` + `/keuangan` page (P&L, cash flow,
+   balance sheet, bank rec, EBITDA, ROI, MTD/YTD); investor-capital & opening-cash Settings.
+   FB-019 — best-effort, assumptions listed on the page.
 
-Not in the stack (blocked): FB-012, FB-017, FB-018, FB-019.
+Not in the stack: **FB-020's** broader UI streamline (only the Settings categorisation is done —
+FB-020 is still Need Refinement). Open questions Q-001/Q-002 (kg per karung) and Q-004 (depreciation
+method / zero-date target) are worked around, not answered — the owner should confirm.
 
 ---
 
