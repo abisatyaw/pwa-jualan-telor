@@ -49,6 +49,10 @@ class HdpTarget(BaseModel):
     value: float = Field(ge=0, le=100)
 
 
+class IntSetting(BaseModel):
+    value: int = Field(ge=0)
+
+
 class FcrTarget(BaseModel):
     value: float = Field(gt=0)
 
@@ -354,6 +358,48 @@ class HdpSummary(BaseModel):
     value: float | None
     target: float  # hdp_target_percentage setting (default 85)
     trend: list[MetricPoint]
+
+
+class FinancialStatement(BaseModel):
+    label: str
+    period_from: date
+    period_to: date
+    # Profit & loss (accrual, for the period)
+    sales_revenue: int
+    cogs: int
+    gross_profit: int
+    operating_expenses: int
+    ebitda: int
+    depreciation_expense: int
+    net_profit: int
+    # Cash flow (for the period)
+    cf_operating: int
+    cf_investing: int
+    cf_financing: int
+    net_cash_change: int
+    # Balance sheet (as of period_to, from inception)
+    cash_balance: int
+    accounts_receivable: int
+    asset_book_value: int
+    total_assets: int
+    accounts_payable: int
+    accumulated_depreciation: int
+    paid_in_capital: int
+    retained_earnings: int
+    total_equity: int
+    total_liabilities_equity: int
+    # ROI (cumulative net profit / invested capital)
+    invested_capital: int
+    roi_pct: float
+    # Bank reconciliation (for the period)
+    bank_cash_in: int
+    bank_cash_out: int
+
+
+class FinancialReport(BaseModel):
+    mtd: FinancialStatement
+    ytd: FinancialStatement
+    monthly_net_profit: list[MetricPoint]
 
 
 class DashboardOverview(BaseModel):

@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useAuth } from '../context/AuthContext';
 import type { DropdownOption, KgPerKarungRow, User, UserRole } from '../types';
+import { formatRupiah } from '../utils';
 
 interface OptionListProps {
   title: string;
@@ -464,6 +465,23 @@ export function Settings() {
           allowUnset
         />
         <KgPerKarungSetting isAdmin={isAdmin} />
+        <ScalarSetting
+          title="Modal Investor (Rp)"
+          hint={(v) => `Modal ditanamkan investor: ${formatRupiah(v ?? 0)}. Dipakai untuk ROI & neraca.`}
+          step="1000000"
+          isAdmin={isAdmin}
+          load={api.settings.getInvestorCapital}
+          save={api.settings.updateInvestorCapital}
+        />
+        <ScalarSetting
+          title="Kas Bank Awal (Rp)"
+          hint={(v) => `Modal kerja awal / saldo kas awal: ${formatRupiah(v ?? 0)}.`}
+          step="1000000"
+          isAdmin={isAdmin}
+          load={api.settings.getOpeningBankCash}
+          save={api.settings.updateOpeningBankCash}
+          allowUnset
+        />
       </SettingsGroup>
 
       {isAdmin && (

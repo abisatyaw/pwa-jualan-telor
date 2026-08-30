@@ -6,6 +6,7 @@ import type {
   DashboardOverview,
   Debt,
   DebtInput,
+  FinancialReport,
   DropdownOption,
   EggPrice,
   KgPerKarungRow,
@@ -135,6 +136,7 @@ export const api = {
   },
   dashboard: (params: { period: string; from?: string; to?: string }) =>
     request<DashboardOverview>(`/dashboard${qs(params)}`),
+  financial: () => request<FinancialReport>('/financial'),
   eggPrices: {
     list: () => request<EggPrice[]>('/egg-prices'),
     refresh: () => request<EggPrice[]>('/egg-prices/refresh', { method: 'POST' }),
@@ -172,6 +174,18 @@ export const api = {
       request<KgPerKarungRow>('/settings/kg-per-karung', {
         method: 'PUT',
         body: JSON.stringify({ feed_type, value }),
+      }),
+    getInvestorCapital: () => request<{ value: number }>('/settings/investor-capital'),
+    updateInvestorCapital: (value: number) =>
+      request<{ value: number }>('/settings/investor-capital', {
+        method: 'PUT',
+        body: JSON.stringify({ value }),
+      }),
+    getOpeningBankCash: () => request<{ value: number }>('/settings/opening-bank-cash'),
+    updateOpeningBankCash: (value: number) =>
+      request<{ value: number }>('/settings/opening-bank-cash', {
+        method: 'PUT',
+        body: JSON.stringify({ value }),
       }),
   },
 };

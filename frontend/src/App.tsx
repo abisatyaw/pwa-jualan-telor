@@ -14,6 +14,7 @@ import { TransactionForm } from './pages/TransactionForm';
 import { DebtList } from './pages/DebtList';
 import { DebtForm } from './pages/DebtForm';
 import { Settings } from './pages/Settings';
+import { Financial } from './pages/Financial';
 import { Login } from './pages/Login';
 import { useAuth } from './context/AuthContext';
 
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { to: '/penjualan', label: 'Penjualan' },
   { to: '/transaksi', label: 'Transaksi' },
   { to: '/hutang', label: 'Hutang' },
+  { to: '/keuangan', label: 'Keuangan' },
   { to: '/setting', label: 'Setting' },
 ];
 
@@ -84,6 +86,7 @@ function App() {
             <Route path="/hutang" element={<DebtList />} />
             <Route path="/hutang/new" element={<DebtForm />} />
             <Route path="/hutang/:id" element={<DebtForm />} />
+            <Route path="/keuangan" element={<Financial />} />
             <Route path="/setting" element={<Settings />} />
           </Routes>
         </main>

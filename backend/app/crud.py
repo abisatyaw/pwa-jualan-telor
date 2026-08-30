@@ -44,6 +44,12 @@ FCR_TARGET_SETTING_KEY = "fcr_target"
 DEFAULT_HDP_TARGET_PERCENTAGE = 85.0
 HDP_TARGET_SETTING_KEY = "hdp_target_percentage"
 
+# FB-019: investor capital (equity) and the opening bank cash (working capital).
+DEFAULT_INVESTOR_CAPITAL = 140_000_000
+INVESTOR_CAPITAL_SETTING_KEY = "investor_capital"
+DEFAULT_OPENING_BANK_CASH = 0
+OPENING_BANK_CASH_SETTING_KEY = "opening_bank_cash"
+
 
 # Fractional quantities (kg, kotak, karung) are kept to 3 decimals everywhere
 # (GEN-003 / FB-013 / FB-015) so small differences stay visible and stored values
@@ -155,6 +161,10 @@ def seed_default_settings(db: Session) -> None:
         )
     if db.get(models.Setting, HDP_TARGET_SETTING_KEY) is None:
         db.add(models.Setting(key=HDP_TARGET_SETTING_KEY, value=str(DEFAULT_HDP_TARGET_PERCENTAGE)))
+    if db.get(models.Setting, INVESTOR_CAPITAL_SETTING_KEY) is None:
+        db.add(models.Setting(key=INVESTOR_CAPITAL_SETTING_KEY, value=str(DEFAULT_INVESTOR_CAPITAL)))
+    if db.get(models.Setting, OPENING_BANK_CASH_SETTING_KEY) is None:
+        db.add(models.Setting(key=OPENING_BANK_CASH_SETTING_KEY, value=str(DEFAULT_OPENING_BANK_CASH)))
     # fcr_target is intentionally not seeded here - see FCR_TARGET_SETTING_KEY.
     for feed_type in DEFAULT_OPTIONS["feed_type"]:
         key = kg_per_karung_setting_key(feed_type)
@@ -329,6 +339,37 @@ def set_hdp_target_percentage(db: Session, value: float) -> float:
     return value
 
 
+def _get_int_setting(db: Session, key: str, default: int) -> int:
+    setting = db.get(models.Setting, key)
+    return int(float(setting.value)) if setting else default
+
+
+def _set_int_setting(db: Session, key: str, value: int) -> int:
+    setting = db.get(models.Setting, key)
+    if setting is None:
+        db.add(models.Setting(key=key, value=str(value)))
+    else:
+        setting.value = str(value)
+    db.commit()
+    return value
+
+
+def get_investor_capital(db: Session) -> int:
+    return _get_int_setting(db, INVESTOR_CAPITAL_SETTING_KEY, DEFAULT_INVESTOR_CAPITAL)
+
+
+def set_investor_capital(db: Session, value: int) -> int:
+    return _set_int_setting(db, INVESTOR_CAPITAL_SETTING_KEY, value)
+
+
+def get_opening_bank_cash(db: Session) -> int:
+    return _get_int_setting(db, OPENING_BANK_CASH_SETTING_KEY, DEFAULT_OPENING_BANK_CASH)
+
+
+def set_opening_bank_cash(db: Session, value: int) -> int:
+    return _set_int_setting(db, OPENING_BANK_CASH_SETTING_KEY, value)
+
+
 # ---------- Asset ----------
 
 
@@ -343,7 +384,12 @@ def asset_to_out(asset: models.Asset, db: Session) -> schemas.AssetOut:
         if asset.depreciation_months > 0
         else 0
     )
-    months_elapsed = _months_between(asset.acquisition_date, today)
+    # full-month convention: the acquisition month counts as month 0, so the
+    # depreciation the financial report attributes to a period lines up with the
+    # book value here (FB-019 balance sheet ties out).
+    months_elapsed = max(
+        (today.year - asset.acquisition_date.year) * 12 + (today.month - asset.acquisition_date.month), 0
+    )
     accumulated = min(total_acquisition_value, monthly_depreciation * months_elapsed)
     book_value = total_acquisition_value - accumulated
 
@@ -1068,4 +1114,172 @@ def get_dashboard_overview(
         hdp=get_hdp_summary(db, period, custom_from, custom_to),
         expense_total=sum(t.amount for t in period_transactions),
         sales_total=sum(s.total_price for s in period_sales),
+    )
+
+
+# ---------- Performance Financial (FB-019) ----------
+#
+# A best-effort management report from the app's data. Simplifications, all
+# surfaced in the UI's "Asumsi" note:
+#   - COGS = feed + livestock/egg-stock purchases; every other transaction is
+#     operating expense. Asset purchases are capex, not expense.
+#   - depreciation is straight-line, attributed to the months it covers.
+#   - cash flow from operations = net profit + depreciation (no working-capital
+#     timing — sales/expense payment dates are not tracked).
+#   - cash balance is reconstructed from inception: opening cash + capital +
+#     sales + new debt − transactions − asset purchases − debt repayments.
+#   - no interest or tax expense is modelled.
+
+_COGS_CATEGORIES = {"Pakan", "Pembelian Telor", "Pembelian Ayam"}
+_INCEPTION = date(2000, 1, 1)
+
+
+def _sum_transactions(
+    db: Session, date_from: date, date_to: date, only=None, without=None
+) -> int:
+    stmt = select(models.DailyTransaction).where(
+        models.DailyTransaction.transaction_date >= date_from,
+        models.DailyTransaction.transaction_date <= date_to,
+    )
+    total = 0
+    for t in db.scalars(stmt):
+        if only is not None and t.category not in only:
+            continue
+        if without is not None and t.category in without:
+            continue
+        total += t.amount
+    return total
+
+
+def _sales_revenue(db: Session, date_from: date, date_to: date) -> int:
+    return sum(s.total_price for s in get_sales(db, date_from=date_from, date_to=date_to))
+
+
+def _depreciation_expense(db: Session, date_from: date, date_to: date) -> int:
+    """Straight-line depreciation whose calendar month falls inside [date_from, date_to]."""
+    total = 0
+    for a in get_assets(db):
+        if a.depreciation_months <= 0:
+            continue
+        monthly = round(a.quantity * a.acquisition_price / a.depreciation_months)
+        for year, month, _s, _e in _months_in_range(date_from, date_to):
+            # depreciation charged from the month after acquisition, matching the
+            # book value in asset_to_out (months_elapsed = plain month difference)
+            months_since = (year - a.acquisition_date.year) * 12 + (month - a.acquisition_date.month)
+            if 1 <= months_since <= a.depreciation_months:
+                total += monthly
+    return total
+
+
+def _asset_acquisitions(db: Session, date_from: date, date_to: date) -> int:
+    return sum(
+        a.quantity * a.acquisition_price
+        for a in get_assets(db)
+        if date_from <= a.acquisition_date <= date_to
+    )
+
+
+def _new_debt(db: Session, date_from: date, date_to: date) -> int:
+    return sum(d.amount for d in get_debts(db) if date_from <= d.loan_date <= date_to)
+
+
+def get_financial_statement(
+    db: Session, label: str, date_from: date, date_to: date
+) -> schemas.FinancialStatement:
+    investor_capital = get_investor_capital(db)
+    opening_cash = get_opening_bank_cash(db)
+
+    revenue = _sales_revenue(db, date_from, date_to)
+    cogs = _sum_transactions(db, date_from, date_to, only=_COGS_CATEGORIES)
+    gross_profit = revenue - cogs
+    opex = _sum_transactions(db, date_from, date_to, without=_COGS_CATEGORIES)
+    ebitda = gross_profit - opex
+    depreciation = _depreciation_expense(db, date_from, date_to)
+    net_profit = ebitda - depreciation
+
+    cf_operating = net_profit + depreciation
+    cf_investing = -_asset_acquisitions(db, date_from, date_to)
+    cf_financing = _new_debt(db, date_from, date_to)
+    net_cash_change = cf_operating + cf_investing + cf_financing
+
+    # balance sheet as of date_to, from inception
+    all_revenue = _sales_revenue(db, _INCEPTION, date_to)
+    all_cogs = _sum_transactions(db, _INCEPTION, date_to, only=_COGS_CATEGORIES)
+    all_opex = _sum_transactions(db, _INCEPTION, date_to, without=_COGS_CATEGORIES)
+    all_depr = _depreciation_expense(db, _INCEPTION, date_to)
+    retained_earnings = all_revenue - all_cogs - all_opex - all_depr
+
+    sales_to_date = [s for s in get_sales(db) if s.sale_date <= date_to]
+    ar = sum(s.total_price - s.paid_amount for s in sales_to_date)
+    debts_to_date = [d for d in get_debts(db) if d.loan_date <= date_to]
+    ap = sum(d.amount - d.paid_amount for d in debts_to_date)
+
+    assets_to_date = [a for a in get_assets(db) if a.acquisition_date <= date_to]
+    book_values = {a.id: asset_to_out(a, db).book_value for a in assets_to_date}
+    asset_book_value = sum(book_values.values())
+    accumulated_depreciation = sum(
+        a.quantity * a.acquisition_price - book_values[a.id] for a in assets_to_date
+    )
+
+    all_txn = _sum_transactions(db, _INCEPTION, date_to)
+    all_asset_acq = sum(a.quantity * a.acquisition_price for a in assets_to_date)
+    all_debt_repaid = sum(d.paid_amount for d in debts_to_date)
+    cash_collected_from_sales = sum(s.paid_amount for s in sales_to_date)
+    cash_balance = (
+        opening_cash + investor_capital + cash_collected_from_sales + sum(d.amount for d in debts_to_date)
+        - all_txn - all_asset_acq - all_debt_repaid
+    )
+
+    total_assets = cash_balance + ar + asset_book_value
+    total_equity = investor_capital + retained_earnings
+    total_liabilities_equity = ap + total_equity
+    invested_capital = investor_capital + opening_cash
+    roi_pct = round(retained_earnings / invested_capital * 100, 1) if invested_capital else 0.0
+
+    return schemas.FinancialStatement(
+        label=label,
+        period_from=date_from,
+        period_to=date_to,
+        sales_revenue=revenue,
+        cogs=cogs,
+        gross_profit=gross_profit,
+        operating_expenses=opex,
+        ebitda=ebitda,
+        depreciation_expense=depreciation,
+        net_profit=net_profit,
+        cf_operating=cf_operating,
+        cf_investing=cf_investing,
+        cf_financing=cf_financing,
+        net_cash_change=net_cash_change,
+        cash_balance=cash_balance,
+        accounts_receivable=ar,
+        asset_book_value=asset_book_value,
+        total_assets=total_assets,
+        accounts_payable=ap,
+        accumulated_depreciation=accumulated_depreciation,
+        paid_in_capital=investor_capital,
+        retained_earnings=retained_earnings,
+        total_equity=total_equity,
+        total_liabilities_equity=total_liabilities_equity,
+        invested_capital=invested_capital,
+        roi_pct=roi_pct,
+        bank_cash_in=revenue + _new_debt(db, date_from, date_to),
+        bank_cash_out=_sum_transactions(db, date_from, date_to)
+        + _asset_acquisitions(db, date_from, date_to),
+    )
+
+
+def get_financial_report(db: Session) -> schemas.FinancialReport:
+    today = date.today()
+    monthly = [
+        schemas.MetricPoint(
+            label=f"{year}-{month:02d}",
+            value=get_financial_statement(db, f"{year}-{month:02d}", ms, me).net_profit,
+        )
+        for year, month, ms, me in _months_in_range(today.replace(month=1, day=1), today)
+    ]
+    return schemas.FinancialReport(
+        mtd=get_financial_statement(db, "MTD", today.replace(day=1), today),
+        ytd=get_financial_statement(db, "YTD", today.replace(month=1, day=1), today),
+        monthly_net_profit=monthly,
     )

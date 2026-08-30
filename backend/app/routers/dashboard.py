@@ -19,6 +19,11 @@ def get_dashboard(
     return crud.get_dashboard_overview(db, period, from_, to)
 
 
+@router.get("/financial", response_model=schemas.FinancialReport)
+def get_financial(db: Session = Depends(get_db)):
+    return crud.get_financial_report(db)
+
+
 @router.get("/egg-prices", response_model=list[schemas.EggPriceOut])
 def get_egg_prices(db: Session = Depends(get_db)):
     return crud.get_egg_prices(db)

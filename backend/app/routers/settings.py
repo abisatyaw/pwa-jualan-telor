@@ -85,3 +85,23 @@ def list_kg_per_karung(db: Session = Depends(get_db)):
 def update_kg_per_karung(payload: schemas.KgPerKarungUpdate, db: Session = Depends(get_db)):
     value = crud.set_kg_per_karung(db, payload.feed_type, payload.value)
     return schemas.KgPerKarungRow(feed_type=payload.feed_type, value=value)
+
+
+@router.get("/investor-capital", response_model=schemas.IntSetting)
+def get_investor_capital(db: Session = Depends(get_db)):
+    return schemas.IntSetting(value=crud.get_investor_capital(db))
+
+
+@router.put("/investor-capital", response_model=schemas.IntSetting, dependencies=[Depends(require_admin)])
+def update_investor_capital(payload: schemas.IntSetting, db: Session = Depends(get_db)):
+    return schemas.IntSetting(value=crud.set_investor_capital(db, payload.value))
+
+
+@router.get("/opening-bank-cash", response_model=schemas.IntSetting)
+def get_opening_bank_cash(db: Session = Depends(get_db)):
+    return schemas.IntSetting(value=crud.get_opening_bank_cash(db))
+
+
+@router.put("/opening-bank-cash", response_model=schemas.IntSetting, dependencies=[Depends(require_admin)])
+def update_opening_bank_cash(payload: schemas.IntSetting, db: Session = Depends(get_db)):
+    return schemas.IntSetting(value=crud.set_opening_bank_cash(db, payload.value))

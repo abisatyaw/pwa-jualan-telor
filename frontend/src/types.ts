@@ -239,6 +239,43 @@ export interface HdpSummary {
   trend: MetricPoint[];
 }
 
+export interface FinancialStatement {
+  label: string;
+  period_from: string;
+  period_to: string;
+  sales_revenue: number;
+  cogs: number;
+  gross_profit: number;
+  operating_expenses: number;
+  ebitda: number;
+  depreciation_expense: number;
+  net_profit: number;
+  cf_operating: number;
+  cf_investing: number;
+  cf_financing: number;
+  net_cash_change: number;
+  cash_balance: number;
+  accounts_receivable: number;
+  asset_book_value: number;
+  total_assets: number;
+  accounts_payable: number;
+  accumulated_depreciation: number;
+  paid_in_capital: number;
+  retained_earnings: number;
+  total_equity: number;
+  total_liabilities_equity: number;
+  invested_capital: number;
+  roi_pct: number;
+  bank_cash_in: number;
+  bank_cash_out: number;
+}
+
+export interface FinancialReport {
+  mtd: FinancialStatement;
+  ytd: FinancialStatement;
+  monthly_net_profit: MetricPoint[];
+}
+
 export interface DashboardOverview {
   production: ProductionSummary;
   weekly_transactions: WeeklyTransactionRow[];
