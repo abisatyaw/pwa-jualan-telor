@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { APP_VERSION } from '../version';
 
 export function Login() {
   const { login } = useAuth();
@@ -24,7 +25,7 @@ export function Login() {
   return (
     <div className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
-        <h1 className="page-title">Telur Tracker</h1>
+        <h1 className="page-title">Cinz Farm</h1>
 
         <div className="form-group">
           <label className="form-label">Username</label>
@@ -51,6 +52,8 @@ export function Login() {
         <button type="submit" className="btn btn-primary btn-block" disabled={submitting}>
           {submitting ? 'Masuk...' : 'Masuk'}
         </button>
+
+        <p className="hint-text login-version">{APP_VERSION}</p>
       </form>
     </div>
   );

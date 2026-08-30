@@ -100,7 +100,7 @@ export function Dashboard() {
           <div className="kpi-grid">
             <KpiCard label="Total Penjualan" value={formatRupiah(data.sales_total)} accent />
             <KpiCard label="Total Biaya" value={formatRupiah(data.expense_total)} />
-            <KpiCard label="Estimasi Profit" value={formatRupiah(data.sales_total - data.expense_total)} />
+            <KpiCard label="Estimasi Margin" value={formatRupiah(data.sales_total - data.expense_total)} />
             <KpiCard label="Total Produksi" value={`${shortKg(data.production.total_kg)} Kg`} />
             <KpiCard label="Piutang Pelanggan" value={formatRupiah(data.total_receivable)} />
             <KpiCard label="Saldo Hutang" value={formatRupiah(data.debts_outstanding)} />

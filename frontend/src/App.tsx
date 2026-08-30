@@ -40,7 +40,7 @@ function App() {
     <BrowserRouter>
       <div className="app-shell">
         <header className="top-header">
-          <div className="brand">Telur Tracker</div>
+          <div className="brand">Cinz Farm</div>
           <nav className="top-nav">
             {NAV_ITEMS.map((item) => (
               <NavLink
