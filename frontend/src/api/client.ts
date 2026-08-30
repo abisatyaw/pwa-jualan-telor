@@ -6,6 +6,7 @@ import type {
   DebtInput,
   DropdownOption,
   EggPrice,
+  KgPerKarungRow,
   Production,
   ProductionInput,
   Sale,
@@ -141,5 +142,26 @@ export const api = {
     getKotakToKg: () => request<{ value: number }>('/settings/kotak-to-kg'),
     updateKotakToKg: (value: number) =>
       request<{ value: number }>('/settings/kotak-to-kg', { method: 'PUT', body: JSON.stringify({ value }) }),
+    getAverageEggWeight: () => request<{ value: number }>('/settings/average-egg-weight'),
+    updateAverageEggWeight: (value: number) =>
+      request<{ value: number }>('/settings/average-egg-weight', {
+        method: 'PUT',
+        body: JSON.stringify({ value }),
+      }),
+    getHdpTarget: () => request<{ value: number }>('/settings/hdp-target'),
+    updateHdpTarget: (value: number) =>
+      request<{ value: number }>('/settings/hdp-target', { method: 'PUT', body: JSON.stringify({ value }) }),
+    getFcrTarget: () => request<{ value: number | null }>('/settings/fcr-target'),
+    updateFcrTarget: (value: number) =>
+      request<{ value: number | null }>('/settings/fcr-target', {
+        method: 'PUT',
+        body: JSON.stringify({ value }),
+      }),
+    listKgPerKarung: () => request<KgPerKarungRow[]>('/settings/kg-per-karung'),
+    updateKgPerKarung: (feed_type: string, value: number) =>
+      request<KgPerKarungRow>('/settings/kg-per-karung', {
+        method: 'PUT',
+        body: JSON.stringify({ feed_type, value }),
+      }),
   },
 };

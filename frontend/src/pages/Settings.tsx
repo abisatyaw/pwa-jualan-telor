@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useAuth } from '../context/AuthContext';
-import type { DropdownOption, User, UserRole } from '../types';
+import type { DropdownOption, KgPerKarungRow, User, UserRole } from '../types';
 
 interface OptionListProps {
   title: string;
@@ -148,6 +148,148 @@ function KotakSetting({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
+interface ScalarSettingProps {
+  title: string;
+  hint: (value: number | null) => string;
+  step: string;
+  isAdmin: boolean;
+  load: () => Promise<{ value: number | null }>;
+  save: (value: number) => Promise<{ value: number | null }>;
+  // FCR target has no sensible default, so 0 / empty means "not set" and is allowed.
+  allowUnset?: boolean;
+}
+
+function ScalarSetting({ title, hint, step, isAdmin, load, save, allowUnset }: ScalarSettingProps) {
+  const [value, setValue] = useState<number | null>(null);
+  const [input, setInput] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    load().then((r) => {
+      setValue(r.value);
+      setInput(r.value === null ? '' : String(r.value));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    const parsed = Number(input);
+    if (Number.isNaN(parsed) || parsed < 0 || (!allowUnset && parsed <= 0)) {
+      setError(allowUnset ? 'Nilai tidak valid.' : 'Nilai harus lebih dari 0.');
+      return;
+    }
+    setError(null);
+    setSaving(true);
+    try {
+      const r = await save(parsed);
+      setValue(r.value);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="settings-section">
+      <h2>{title}</h2>
+      <p className="hint-text">{hint(value)}</p>
+      {isAdmin && (
+        <form className="settings-add-row" onSubmit={handleSave}>
+          <input
+            className="form-control"
+            type="number"
+            min={0}
+            step={step}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+          <button type="submit" className="btn btn-secondary" disabled={saving}>
+            {saving ? 'Menyimpan...' : 'Simpan'}
+          </button>
+        </form>
+      )}
+      {error && <p className="error-text">{error}</p>}
+    </div>
+  );
+}
+
+function KgPerKarungSetting({ isAdmin }: { isAdmin: boolean }) {
+  const [rows, setRows] = useState<KgPerKarungRow[]>([]);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [savingType, setSavingType] = useState<string | null>(null);
+
+  function load() {
+    api.settings.listKgPerKarung().then((r) => {
+      setRows(r);
+      setDrafts(Object.fromEntries(r.map((row) => [row.feed_type, String(row.value)])));
+    });
+  }
+
+  useEffect(load, []);
+
+  async function handleSave(feedType: string) {
+    const parsed = Number(drafts[feedType]);
+    if (Number.isNaN(parsed) || parsed < 0) {
+      setError('Nilai tidak valid.');
+      return;
+    }
+    setError(null);
+    setSavingType(feedType);
+    try {
+      await api.settings.updateKgPerKarung(feedType, parsed);
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSavingType(null);
+    }
+  }
+
+  return (
+    <div className="settings-section">
+      <h2>Konversi Karung ke Kg (per Jenis Pakan)</h2>
+      {rows.length === 0 ? (
+        <p className="hint-text">Belum ada jenis pakan.</p>
+      ) : (
+        rows.map((row) => (
+          <div className="settings-option-row" key={row.feed_type}>
+            <span>
+              {row.feed_type}
+              {!isAdmin && ` — ${row.value > 0 ? `${row.value} Kg / karung` : 'belum diatur'}`}
+            </span>
+            {isAdmin && (
+              <span className="settings-add-row" style={{ marginTop: 0 }}>
+                <input
+                  className="form-control"
+                  type="number"
+                  min={0}
+                  step="0.5"
+                  value={drafts[row.feed_type] ?? ''}
+                  onChange={(e) => setDrafts((d) => ({ ...d, [row.feed_type]: e.target.value }))}
+                />
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={savingType === row.feed_type}
+                  onClick={() => handleSave(row.feed_type)}
+                >
+                  {savingType === row.feed_type ? '...' : 'Simpan'}
+                </button>
+              </span>
+            )}
+          </div>
+        ))
+      )}
+      <p className="hint-text">Dipakai untuk mengubah pembelian pakan (karung) menjadi kg untuk perhitungan FCR.</p>
+      {error && <p className="error-text">{error}</p>}
+    </div>
+  );
+}
+
 function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [username, setUsername] = useState('');
@@ -266,6 +408,32 @@ export function Settings() {
       <OptionList title="Kategori Transaksi Harian" listKey="transaction_category" isAdmin={isAdmin} />
       <OptionList title="Jenis Pakan" listKey="feed_type" isAdmin={isAdmin} />
       <KotakSetting isAdmin={isAdmin} />
+      <ScalarSetting
+        title="Berat Rata-rata 1 Butir Telur (kg)"
+        hint={(v) => `Default berat per butir: ${v ?? '...'} kg. Dipakai untuk estimasi jumlah butir & HDP.`}
+        step="0.001"
+        isAdmin={isAdmin}
+        load={api.settings.getAverageEggWeight}
+        save={api.settings.updateAverageEggWeight}
+      />
+      <ScalarSetting
+        title="Target HDP (%)"
+        hint={(v) => `Target Hen Day Production: ${v ?? '...'}%`}
+        step="1"
+        isAdmin={isAdmin}
+        load={api.settings.getHdpTarget}
+        save={api.settings.updateHdpTarget}
+      />
+      <ScalarSetting
+        title="Target FCR"
+        hint={(v) => (v === null ? 'Target FCR belum diatur.' : `Target FCR: ${v}`)}
+        step="0.01"
+        isAdmin={isAdmin}
+        load={api.settings.getFcrTarget}
+        save={api.settings.updateFcrTarget}
+        allowUnset
+      />
+      <KgPerKarungSetting isAdmin={isAdmin} />
       {isAdmin && <UserManagement />}
     </div>
   );

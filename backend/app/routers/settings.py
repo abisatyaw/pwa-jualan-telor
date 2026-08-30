@@ -37,3 +37,51 @@ def get_kotak_to_kg(db: Session = Depends(get_db)):
 @router.put("/kotak-to-kg", response_model=schemas.KotakConversion, dependencies=[Depends(require_admin)])
 def update_kotak_to_kg(payload: schemas.KotakConversion, db: Session = Depends(get_db)):
     return schemas.KotakConversion(value=crud.set_kotak_to_kg(db, payload.value))
+
+
+@router.get("/average-egg-weight", response_model=schemas.AverageEggWeight)
+def get_average_egg_weight(db: Session = Depends(get_db)):
+    return schemas.AverageEggWeight(value=crud.get_average_egg_weight_kg(db))
+
+
+@router.put(
+    "/average-egg-weight", response_model=schemas.AverageEggWeight, dependencies=[Depends(require_admin)]
+)
+def update_average_egg_weight(payload: schemas.AverageEggWeight, db: Session = Depends(get_db)):
+    return schemas.AverageEggWeight(value=crud.set_average_egg_weight_kg(db, payload.value))
+
+
+@router.get("/hdp-target", response_model=schemas.HdpTarget)
+def get_hdp_target(db: Session = Depends(get_db)):
+    return schemas.HdpTarget(value=crud.get_hdp_target_percentage(db))
+
+
+@router.put("/hdp-target", response_model=schemas.HdpTarget, dependencies=[Depends(require_admin)])
+def update_hdp_target(payload: schemas.HdpTarget, db: Session = Depends(get_db)):
+    return schemas.HdpTarget(value=crud.set_hdp_target_percentage(db, payload.value))
+
+
+@router.get("/fcr-target", response_model=schemas.FcrTargetOut)
+def get_fcr_target(db: Session = Depends(get_db)):
+    return schemas.FcrTargetOut(value=crud.get_fcr_target(db))
+
+
+@router.put("/fcr-target", response_model=schemas.FcrTargetOut, dependencies=[Depends(require_admin)])
+def update_fcr_target(payload: schemas.FcrTarget, db: Session = Depends(get_db)):
+    return schemas.FcrTargetOut(value=crud.set_fcr_target(db, payload.value))
+
+
+@router.get("/kg-per-karung", response_model=list[schemas.KgPerKarungRow])
+def list_kg_per_karung(db: Session = Depends(get_db)):
+    return [
+        schemas.KgPerKarungRow(feed_type=feed_type, value=value)
+        for feed_type, value in crud.get_all_kg_per_karung(db)
+    ]
+
+
+@router.put(
+    "/kg-per-karung", response_model=schemas.KgPerKarungRow, dependencies=[Depends(require_admin)]
+)
+def update_kg_per_karung(payload: schemas.KgPerKarungUpdate, db: Session = Depends(get_db)):
+    value = crud.set_kg_per_karung(db, payload.feed_type, payload.value)
+    return schemas.KgPerKarungRow(feed_type=payload.feed_type, value=value)
