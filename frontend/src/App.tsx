@@ -10,10 +10,9 @@ import { SaleList } from './pages/SaleList';
 import { SaleForm } from './pages/SaleForm';
 import { TransactionList } from './pages/TransactionList';
 import { TransactionForm } from './pages/TransactionForm';
-import { DebtList } from './pages/DebtList';
 import { DebtForm } from './pages/DebtForm';
 import { Settings } from './pages/Settings';
-import { Financial } from './pages/Financial';
+import { Keuangan } from './pages/Keuangan';
 import { Login } from './pages/Login';
 import { useAuth } from './context/AuthContext';
 
@@ -88,10 +87,10 @@ function App() {
             <Route path="/transaksi" element={<TransactionList />} />
             <Route path="/transaksi/new" element={<TransactionForm />} />
             <Route path="/transaksi/:id" element={<TransactionForm />} />
-            <Route path="/hutang" element={<DebtList />} />
+            <Route path="/hutang" element={<Navigate to="/keuangan?tab=hutang" replace />} />
             <Route path="/hutang/new" element={<DebtForm />} />
             <Route path="/hutang/:id" element={<DebtForm />} />
-            <Route path="/keuangan" element={<Financial />} />
+            <Route path="/keuangan" element={<Keuangan />} />
             <Route path="/setting" element={<Settings />} />
           </Routes>
         </main>

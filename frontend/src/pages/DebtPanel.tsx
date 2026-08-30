@@ -9,7 +9,11 @@ import type { Debt } from '../types';
 import { DEBT_STATUS_LABELS } from '../types';
 import { formatDate, formatRupiah } from '../utils';
 
-export function DebtList() {
+/**
+ * Body of the "Hutang" sub-view (loans the business has taken, e.g. from an investor).
+ * Rendered inside the Keuangan destination's tab (see Keuangan); no page header of its own.
+ */
+export function DebtPanel() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [debts, setDebts] = useState<Debt[]>([]);
@@ -54,13 +58,6 @@ export function DebtList() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1 className="page-title">Hutang</h1>
-        <Link to="/hutang/new" className="btn btn-primary">
-          + Tambah Hutang
-        </Link>
-      </div>
-
       <div className="filter-bar">
         <input
           className="form-control"
