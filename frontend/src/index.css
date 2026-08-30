@@ -161,6 +161,11 @@ body {
   color: var(--color-primary-dark);
 }
 
+.login-version {
+  text-align: center;
+  margin-top: 16px;
+}
+
 /* Page header */
 .page-header {
   display: flex;

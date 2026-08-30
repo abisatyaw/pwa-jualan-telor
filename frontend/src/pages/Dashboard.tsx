@@ -4,7 +4,7 @@ import { api } from '../api/client';
 import { KpiCard } from '../components/KpiCard';
 import { PaymentDialog } from '../components/PaymentDialog';
 import type { DashboardOverview, EggPrice, Period, ReceivableRow } from '../types';
-import { formatDate, formatDateTime, formatRupiah, todayIso } from '../utils';
+import { formatBucketLabel, formatDate, formatDateTime, formatQty, formatRupiah, todayIso } from '../utils';
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'today', label: 'Hari Ini' },
@@ -100,8 +100,8 @@ export function Dashboard() {
           <div className="kpi-grid">
             <KpiCard label="Total Penjualan" value={formatRupiah(data.sales_total)} accent />
             <KpiCard label="Total Biaya" value={formatRupiah(data.expense_total)} />
-            <KpiCard label="Estimasi Profit" value={formatRupiah(data.sales_total - data.expense_total)} />
-            <KpiCard label="Total Produksi" value={`${shortKg(data.production.total_kg)} Kg`} />
+            <KpiCard label="Estimasi Margin" value={formatRupiah(data.sales_total - data.expense_total)} />
+            <KpiCard label="Total Produksi" value={`${formatQty(data.production.total_kg)} Kg`} />
             <KpiCard label="Piutang Pelanggan" value={formatRupiah(data.total_receivable)} />
             <KpiCard label="Saldo Hutang" value={formatRupiah(data.debts_outstanding)} />
           </div>
@@ -110,9 +110,9 @@ export function Dashboard() {
           <div className="chart-section">
             <h2>Produksi Telur</h2>
             <div className="kpi-grid kpi-grid-4">
-              <KpiCard label="Total (Periode)" value={`${shortKg(data.production.total_kg)} Kg`} accent />
+              <KpiCard label="Total (Periode)" value={`${formatQty(data.production.total_kg)} Kg`} accent />
               {Object.entries(data.production.by_group).map(([group, kg]) => (
-                <KpiCard key={group} label={group} value={`${shortKg(kg)} Kg`} />
+                <KpiCard key={group} label={group} value={`${formatQty(kg)} Kg`} />
               ))}
             </div>
             {data.production.trend.length === 0 ? (
@@ -121,9 +121,16 @@ export function Dashboard() {
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={data.production.trend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                  <XAxis
+                    dataKey="label"
+                    tickFormatter={(l) => formatBucketLabel(l, true)}
+                    tick={{ fontSize: 12 }}
+                  />
                   <YAxis tickFormatter={shortKg} tick={{ fontSize: 12 }} width={50} />
-                  <Tooltip formatter={(v) => `${v} Kg`} />
+                  <Tooltip
+                    formatter={(v) => `${formatQty(Number(v))} Kg`}
+                    labelFormatter={(l) => formatBucketLabel(String(l))}
+                  />
                   <Line
                     type="monotone"
                     dataKey="quantity_kg"
@@ -146,7 +153,7 @@ export function Dashboard() {
               weeklyGroups.map((week) => (
                 <div key={week.label} className="card">
                   <div className="card-row">
-                    <span className="card-title">Minggu {week.label}</span>
+                    <span className="card-title">Minggu {formatBucketLabel(week.label)}</span>
                     <strong>{formatRupiah(week.total)}</strong>
                   </div>
                   <ul className="rank-list">
@@ -194,10 +201,10 @@ export function Dashboard() {
           <div className="chart-section">
             <h2>Posisi Stock Telur Hari Ini</h2>
             <div className="kpi-grid kpi-grid-4">
-              <KpiCard label="Stock (Kg)" value={`${shortKg(data.stock.stock_kg)} Kg`} accent />
-              <KpiCard label="Stock (Kotak)" value={`${shortKg(data.stock.stock_kotak)} Kotak`} />
-              <KpiCard label="Total Produksi" value={`${shortKg(data.stock.total_production_kg)} Kg`} />
-              <KpiCard label="Total Beli - Jual" value={`${shortKg(data.stock.total_purchased_kg - data.stock.total_sold_kg)} Kg`} />
+              <KpiCard label="Stock (Kg)" value={`${formatQty(data.stock.stock_kg)} Kg`} accent />
+              <KpiCard label="Stock (Kotak)" value={`${formatQty(data.stock.stock_kotak)} Kotak`} />
+              <KpiCard label="Total Produksi" value={`${formatQty(data.stock.total_production_kg)} Kg`} />
+              <KpiCard label="Total Beli - Jual" value={`${formatQty(data.stock.total_purchased_kg - data.stock.total_sold_kg)} Kg`} />
             </div>
             <p className="hint-text">1 kotak = 15 Kg. Stock = total produksi + pembelian telor - penjualan telor (akumulasi).</p>
 
