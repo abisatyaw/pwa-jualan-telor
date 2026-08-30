@@ -2,6 +2,12 @@ export function formatRupiah(value: number): string {
   return 'Rp' + Math.round(value).toLocaleString('id-ID');
 }
 
+// Quantities (kg, kotak, karung) are shown with a fixed 3 decimal places
+// everywhere (FB-007 / GEN-003), so small differences stay visible.
+export function formatQty(value: number): string {
+  return value.toLocaleString('id-ID', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+}
+
 export function formatDate(value: string): string {
   if (!value) return '-';
   const d = new Date(value + 'T00:00:00');

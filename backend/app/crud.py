@@ -631,12 +631,12 @@ def get_production_summary(
         trend_map[label] += p.quantity_kg
 
     trend = [
-        schemas.ProductionTrendPoint(label=label, quantity_kg=round(qty, 2))
+        schemas.ProductionTrendPoint(label=label, quantity_kg=round(qty, 3))
         for label, qty in sorted(trend_map.items())
     ]
     return schemas.ProductionSummary(
-        total_kg=round(total_kg, 2),
-        by_group={k: round(v, 2) for k, v in by_group.items()},
+        total_kg=round(total_kg, 3),
+        by_group={k: round(v, 3) for k, v in by_group.items()},
         trend=trend,
     )
 
@@ -688,11 +688,11 @@ def get_stock_position(db: Session) -> schemas.StockPosition:
     stock_kg = total_production_kg + total_purchased_kg - total_sold_kg
     egg_prices = get_egg_prices(db)
     return schemas.StockPosition(
-        total_production_kg=round(total_production_kg, 2),
-        total_purchased_kg=round(total_purchased_kg, 2),
-        total_sold_kg=round(total_sold_kg, 2),
-        stock_kg=round(stock_kg, 2),
-        stock_kotak=round(stock_kg / kotak_to_kg, 2),
+        total_production_kg=round(total_production_kg, 3),
+        total_purchased_kg=round(total_purchased_kg, 3),
+        total_sold_kg=round(total_sold_kg, 3),
+        stock_kg=round(stock_kg, 3),
+        stock_kotak=round(stock_kg / kotak_to_kg, 3),
         egg_prices=[schemas.EggPriceOut.model_validate(p) for p in egg_prices],
     )
 
