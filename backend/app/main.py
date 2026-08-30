@@ -8,10 +8,12 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from . import crud
-from .database import Base, SessionLocal, engine
+from .database import SessionLocal
 from .routers import assets, auth, dashboard, debts, production, sales, settings, transactions, users
 
-Base.metadata.create_all(bind=engine)
+# Schema is managed by Alembic migrations (see migrations/), not create_all.
+# Run `alembic upgrade head` (via scripts/bootstrap_alembic.py first, for
+# databases that predate Alembic) before starting the app.
 
 with SessionLocal() as db:
     crud.seed_default_options(db)

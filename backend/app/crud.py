@@ -33,6 +33,17 @@ DEFAULT_OPTIONS: dict[str, list[str]] = {
 DEFAULT_KOTAK_TO_KG = 15.0
 KOTAK_TO_KG_SETTING_KEY = "kotak_to_kg"
 
+DEFAULT_AVERAGE_EGG_WEIGHT_KG = 0.055
+AVERAGE_EGG_WEIGHT_KG_SETTING_KEY = "average_egg_weight_kg"
+
+# Left unseeded on purpose: the real FCR target is unconfirmed (see ADR/open
+# questions), so this stays unset until the business supplies a real number
+# instead of shipping a guessed default.
+FCR_TARGET_SETTING_KEY = "fcr_target"
+
+DEFAULT_HDP_TARGET_PERCENTAGE = 85.0
+HDP_TARGET_SETTING_KEY = "hdp_target_percentage"
+
 
 def kg_equivalent(qty: float | None, unit: str | None, kotak_to_kg: float) -> float:
     if not qty:
@@ -126,7 +137,20 @@ def seed_egg_price_sources(db: Session) -> None:
 def seed_default_settings(db: Session) -> None:
     if db.get(models.Setting, KOTAK_TO_KG_SETTING_KEY) is None:
         db.add(models.Setting(key=KOTAK_TO_KG_SETTING_KEY, value=str(DEFAULT_KOTAK_TO_KG)))
-        db.commit()
+    if db.get(models.Setting, AVERAGE_EGG_WEIGHT_KG_SETTING_KEY) is None:
+        db.add(
+            models.Setting(
+                key=AVERAGE_EGG_WEIGHT_KG_SETTING_KEY, value=str(DEFAULT_AVERAGE_EGG_WEIGHT_KG)
+            )
+        )
+    if db.get(models.Setting, HDP_TARGET_SETTING_KEY) is None:
+        db.add(models.Setting(key=HDP_TARGET_SETTING_KEY, value=str(DEFAULT_HDP_TARGET_PERCENTAGE)))
+    # fcr_target is intentionally not seeded here - see FCR_TARGET_SETTING_KEY.
+    for feed_type in DEFAULT_OPTIONS["feed_type"]:
+        key = kg_per_karung_setting_key(feed_type)
+        if db.get(models.Setting, key) is None:
+            db.add(models.Setting(key=key, value="0"))
+    db.commit()
 
 
 DEFAULT_ADMIN_USERNAME = "admin"
@@ -218,6 +242,72 @@ def set_kotak_to_kg(db: Session, value: float) -> float:
     setting = db.get(models.Setting, KOTAK_TO_KG_SETTING_KEY)
     if setting is None:
         db.add(models.Setting(key=KOTAK_TO_KG_SETTING_KEY, value=str(value)))
+    else:
+        setting.value = str(value)
+    db.commit()
+    return value
+
+
+def kg_per_karung_setting_key(feed_type: str) -> str:
+    return f"kg_per_karung:{feed_type}"
+
+
+def get_kg_per_karung(db: Session, feed_type: str) -> float:
+    setting = db.get(models.Setting, kg_per_karung_setting_key(feed_type))
+    return float(setting.value) if setting else 0.0
+
+
+def set_kg_per_karung(db: Session, feed_type: str, value: float) -> float:
+    key = kg_per_karung_setting_key(feed_type)
+    setting = db.get(models.Setting, key)
+    if setting is None:
+        db.add(models.Setting(key=key, value=str(value)))
+    else:
+        setting.value = str(value)
+    db.commit()
+    return value
+
+
+def get_average_egg_weight_kg(db: Session) -> float:
+    setting = db.get(models.Setting, AVERAGE_EGG_WEIGHT_KG_SETTING_KEY)
+    return float(setting.value) if setting else DEFAULT_AVERAGE_EGG_WEIGHT_KG
+
+
+def set_average_egg_weight_kg(db: Session, value: float) -> float:
+    setting = db.get(models.Setting, AVERAGE_EGG_WEIGHT_KG_SETTING_KEY)
+    if setting is None:
+        db.add(models.Setting(key=AVERAGE_EGG_WEIGHT_KG_SETTING_KEY, value=str(value)))
+    else:
+        setting.value = str(value)
+    db.commit()
+    return value
+
+
+def get_fcr_target(db: Session) -> float | None:
+    """None means unconfigured - the dashboard should hide the target line rather than assume a value."""
+    setting = db.get(models.Setting, FCR_TARGET_SETTING_KEY)
+    return float(setting.value) if setting else None
+
+
+def set_fcr_target(db: Session, value: float) -> float:
+    setting = db.get(models.Setting, FCR_TARGET_SETTING_KEY)
+    if setting is None:
+        db.add(models.Setting(key=FCR_TARGET_SETTING_KEY, value=str(value)))
+    else:
+        setting.value = str(value)
+    db.commit()
+    return value
+
+
+def get_hdp_target_percentage(db: Session) -> float:
+    setting = db.get(models.Setting, HDP_TARGET_SETTING_KEY)
+    return float(setting.value) if setting else DEFAULT_HDP_TARGET_PERCENTAGE
+
+
+def set_hdp_target_percentage(db: Session, value: float) -> float:
+    setting = db.get(models.Setting, HDP_TARGET_SETTING_KEY)
+    if setting is None:
+        db.add(models.Setting(key=HDP_TARGET_SETTING_KEY, value=str(value)))
     else:
         setting.value = str(value)
     db.commit()

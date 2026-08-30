@@ -42,6 +42,7 @@ class Asset(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     asset_name: Mapped[str] = mapped_column(String, nullable=False)
     asset_type: Mapped[str] = mapped_column(String, nullable=False)
+    quantity: Mapped[int] = mapped_column(nullable=False, server_default="1", default=1)
     acquisition_price: Mapped[int] = mapped_column(nullable=False)
     acquisition_date: Mapped[date] = mapped_column(Date, nullable=False)
     depreciation_months: Mapped[int] = mapped_column(nullable=False, default=0)
@@ -54,6 +55,18 @@ class Asset(Base):
     )
 
 
+class AssetStatusUpdate(Base):
+    __tablename__ = "asset_status_updates"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    asset_id: Mapped[int] = mapped_column(ForeignKey("assets.id"), nullable=False)
+    update_date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False)
+    quantity_change: Mapped[int] = mapped_column(nullable=False)
+    reason: Mapped[str] = mapped_column(String, nullable=False)
+    notes: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class Production(Base):
     __tablename__ = "productions"
 
@@ -61,6 +74,9 @@ class Production(Base):
     production_date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False)
     chicken_group: Mapped[str] = mapped_column(String, nullable=False)
     quantity_kg: Mapped[float] = mapped_column(nullable=False)
+    average_egg_weight_kg: Mapped[float] = mapped_column(
+        nullable=False, server_default="0.055", default=0.055
+    )
     notes: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -97,6 +113,7 @@ class DailyTransaction(Base):
     amount: Mapped[int] = mapped_column(nullable=False)
     qty: Mapped[float | None] = mapped_column(nullable=True)
     qty_unit: Mapped[str | None] = mapped_column(String, nullable=True)
+    unit_price: Mapped[int | None] = mapped_column(nullable=True)
     feed_type: Mapped[str | None] = mapped_column(String, nullable=True)
     notes: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
