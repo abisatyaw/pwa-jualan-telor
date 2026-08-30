@@ -589,6 +589,25 @@ textarea.form-control {
   margin: 0;
 }
 
+.settings-subhead {
+  margin: 20px 0 0;
+  padding-top: 14px;
+  border-top: 2px solid var(--color-border);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.settings-subhead:first-child {
+  margin-top: 4px;
+}
+
+.settings-subhead + .settings-section {
+  border-top: none;
+}
+
 /* Tables (desktop) */
 .table-wrap {
   overflow-x: auto;
