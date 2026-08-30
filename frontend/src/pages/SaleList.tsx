@@ -6,7 +6,7 @@ import { PaymentDialog } from '../components/PaymentDialog';
 import { useAuth } from '../context/AuthContext';
 import type { Sale } from '../types';
 import { PAYMENT_STATUS_LABELS } from '../types';
-import { formatDate, formatRupiah } from '../utils';
+import { formatDate, formatQty, formatRupiah } from '../utils';
 
 export function SaleList() {
   const { user } = useAuth();
@@ -105,7 +105,7 @@ export function SaleList() {
                     <div>
                       <div className="card-title">{s.buyer_name}</div>
                       <div className="card-subtitle">
-                        {formatDate(s.sale_date)} · {s.product_type} · {s.quantity} {s.unit}
+                        {formatDate(s.sale_date)} · {s.product_type} · {formatQty(s.quantity)} {s.unit}
                       </div>
                     </div>
                     <span className={`badge badge-${s.payment_status}`}>
@@ -157,7 +157,7 @@ export function SaleList() {
                     <td>{s.buyer_name}</td>
                     <td>{s.product_type}</td>
                     <td className="num">
-                      {s.quantity} {s.unit}
+                      {formatQty(s.quantity)} {s.unit}
                     </td>
                     <td className="num">{formatRupiah(s.unit_price)}</td>
                     <td className="num">{formatRupiah(s.total_price)}</td>

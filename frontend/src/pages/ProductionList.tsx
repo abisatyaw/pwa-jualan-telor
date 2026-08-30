@@ -5,7 +5,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { KpiCard } from '../components/KpiCard';
 import { useAuth } from '../context/AuthContext';
 import type { Production } from '../types';
-import { formatDate } from '../utils';
+import { formatDate, formatQty } from '../utils';
 
 export function ProductionList() {
   const { user } = useAuth();
@@ -74,7 +74,7 @@ export function ProductionList() {
       </div>
 
       <div className="kpi-grid" style={{ gridTemplateColumns: '1fr' }}>
-        <KpiCard label="Total Produksi (sesuai filter)" value={`${total.toLocaleString('id-ID')} Kg`} accent />
+        <KpiCard label="Total Produksi (sesuai filter)" value={`${formatQty(total)} Kg`} accent />
       </div>
 
       {error && <p className="error-text">{error}</p>}
@@ -95,7 +95,7 @@ export function ProductionList() {
                         {p.chicken_group} · ~{p.estimated_egg_count.toLocaleString('id-ID')} butir
                       </div>
                     </div>
-                    <span className="badge badge-active">{p.quantity_kg.toLocaleString('id-ID')} Kg</span>
+                    <span className="badge badge-active">{formatQty(p.quantity_kg)} Kg</span>
                   </div>
                 </Link>
                 {isAdmin && (
@@ -126,7 +126,7 @@ export function ProductionList() {
                   <tr key={p.id}>
                     <td>{formatDate(p.production_date)}</td>
                     <td>{p.chicken_group}</td>
-                    <td className="num">{p.quantity_kg.toLocaleString('id-ID')}</td>
+                    <td className="num">{formatQty(p.quantity_kg)}</td>
                     <td className="num">{p.estimated_egg_count.toLocaleString('id-ID')}</td>
                     <td>{p.notes || '-'}</td>
                     <td>

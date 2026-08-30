@@ -45,6 +45,16 @@ DEFAULT_HDP_TARGET_PERCENTAGE = 85.0
 HDP_TARGET_SETTING_KEY = "hdp_target_percentage"
 
 
+# Fractional quantities (kg, kotak, karung) are kept to 3 decimals everywhere
+# (GEN-003 / FB-013 / FB-015) so small differences stay visible and stored values
+# match what the form shows.
+QTY_DECIMALS = 3
+
+
+def quantize_qty(value: float | None) -> float | None:
+    return None if value is None else round(value, QTY_DECIMALS)
+
+
 def kg_equivalent(qty: float | None, unit: str | None, kotak_to_kg: float) -> float:
     if not qty:
         return 0.0
@@ -400,12 +410,13 @@ def delete_asset(db: Session, asset: models.Asset) -> None:
 
 def production_to_out(production: models.Production) -> schemas.ProductionOut:
     avg = production.average_egg_weight_kg or DEFAULT_AVERAGE_EGG_WEIGHT_KG
-    estimated_egg_count = round(production.quantity_kg / avg) if avg > 0 else 0
+    quantity_kg = quantize_qty(production.quantity_kg) or 0.0
+    estimated_egg_count = round(quantity_kg / avg) if avg > 0 else 0
     return schemas.ProductionOut(
         id=production.id,
         production_date=production.production_date,
         chicken_group=production.chicken_group,
-        quantity_kg=production.quantity_kg,
+        quantity_kg=quantity_kg,
         average_egg_weight_kg=avg,
         estimated_egg_count=estimated_egg_count,
         notes=production.notes,
@@ -437,6 +448,7 @@ def get_production(db: Session, production_id: int) -> models.Production | None:
 
 def _production_data(db: Session, payload: schemas.ProductionBase) -> dict:
     data = payload.model_dump()
+    data["quantity_kg"] = quantize_qty(data["quantity_kg"])
     if data.get("average_egg_weight_kg") is None:
         data["average_egg_weight_kg"] = get_average_egg_weight_kg(db)
     return data
@@ -473,7 +485,7 @@ def sale_to_out(sale: models.Sale) -> schemas.SaleOut:
         id=sale.id,
         sale_date=sale.sale_date,
         product_type=sale.product_type,
-        quantity=sale.quantity,
+        quantity=quantize_qty(sale.quantity),
         unit=sale.unit,
         unit_price=sale.unit_price,
         total_price=sale.total_price,
@@ -523,6 +535,7 @@ def get_sale(db: Session, sale_id: int) -> models.Sale | None:
 def create_sale(db: Session, payload: schemas.SaleCreate) -> models.Sale:
     total_price = round(payload.quantity * payload.unit_price)
     data = payload.model_dump(exclude={"paid_amount"})
+    data["quantity"] = quantize_qty(data["quantity"])
     sale = models.Sale(
         **data,
         total_price=total_price,
@@ -537,6 +550,7 @@ def create_sale(db: Session, payload: schemas.SaleCreate) -> models.Sale:
 def update_sale(db: Session, sale: models.Sale, payload: schemas.SaleUpdate) -> models.Sale:
     total_price = round(payload.quantity * payload.unit_price)
     data = payload.model_dump(exclude={"paid_amount"})
+    data["quantity"] = quantize_qty(data["quantity"])
     for key, value in data.items():
         setattr(sale, key, value)
     sale.total_price = total_price
@@ -571,7 +585,7 @@ def transaction_to_out(transaction: models.DailyTransaction) -> schemas.Transact
         transaction_date=transaction.transaction_date,
         category=transaction.category,
         amount=transaction.amount,
-        qty=transaction.qty,
+        qty=quantize_qty(transaction.qty),
         qty_unit=transaction.qty_unit,
         unit_price=transaction.unit_price,
         feed_type=transaction.feed_type,
@@ -608,8 +622,9 @@ def get_transaction(db: Session, transaction_id: int) -> models.DailyTransaction
 
 def _transaction_data(payload: schemas.TransactionBase) -> dict:
     data = payload.model_dump()
-    if payload.qty is not None and payload.unit_price is not None:
-        data["amount"] = round(payload.qty * payload.unit_price)
+    data["qty"] = quantize_qty(data["qty"])
+    if data["qty"] is not None and payload.unit_price is not None:
+        data["amount"] = round(data["qty"] * payload.unit_price)
     return data
 
 

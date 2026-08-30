@@ -5,7 +5,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { KpiCard } from '../components/KpiCard';
 import { useAuth } from '../context/AuthContext';
 import type { Transaction } from '../types';
-import { formatDate, formatRupiah } from '../utils';
+import { formatDate, formatQty, formatRupiah } from '../utils';
 
 export function TransactionList() {
   const { user } = useAuth();
@@ -93,7 +93,7 @@ export function TransactionList() {
                       <div className="card-title">{t.category}</div>
                       <div className="card-subtitle">
                         {formatDate(t.transaction_date)}
-                        {t.qty ? ` · ${t.qty} ${t.qty_unit ?? ''}` : ''}
+                        {t.qty ? ` · ${formatQty(t.qty)} ${t.qty_unit ?? ''}` : ''}
                       </div>
                     </div>
                     <strong>{formatRupiah(t.amount)}</strong>
@@ -136,7 +136,7 @@ export function TransactionList() {
                       {t.category}
                       {t.feed_type ? ` (${t.feed_type})` : ''}
                     </td>
-                    <td className="num">{t.qty ? `${t.qty} ${t.qty_unit ?? ''}` : '-'}</td>
+                    <td className="num">{t.qty ? `${formatQty(t.qty)} ${t.qty_unit ?? ''}` : '-'}</td>
                     <td className="num">{formatRupiah(t.amount)}</td>
                     <td>{t.notes || '-'}</td>
                     <td>
