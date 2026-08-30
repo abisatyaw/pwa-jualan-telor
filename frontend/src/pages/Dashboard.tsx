@@ -4,7 +4,7 @@ import { api } from '../api/client';
 import { KpiCard } from '../components/KpiCard';
 import { PaymentDialog } from '../components/PaymentDialog';
 import type { DashboardOverview, EggPrice, Period, ReceivableRow } from '../types';
-import { formatDate, formatDateTime, formatRupiah, todayIso } from '../utils';
+import { formatBucketLabel, formatDate, formatDateTime, formatRupiah, todayIso } from '../utils';
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'today', label: 'Hari Ini' },
@@ -121,9 +121,13 @@ export function Dashboard() {
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={data.production.trend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                  <XAxis
+                    dataKey="label"
+                    tickFormatter={(l) => formatBucketLabel(l, true)}
+                    tick={{ fontSize: 12 }}
+                  />
                   <YAxis tickFormatter={shortKg} tick={{ fontSize: 12 }} width={50} />
-                  <Tooltip formatter={(v) => `${v} Kg`} />
+                  <Tooltip formatter={(v) => `${v} Kg`} labelFormatter={(l) => formatBucketLabel(String(l))} />
                   <Line
                     type="monotone"
                     dataKey="quantity_kg"
@@ -146,7 +150,7 @@ export function Dashboard() {
               weeklyGroups.map((week) => (
                 <div key={week.label} className="card">
                   <div className="card-row">
-                    <span className="card-title">Minggu {week.label}</span>
+                    <span className="card-title">Minggu {formatBucketLabel(week.label)}</span>
                     <strong>{formatRupiah(week.total)}</strong>
                   </div>
                   <ul className="rank-list">
