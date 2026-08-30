@@ -46,9 +46,14 @@ export function AssetList() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Aset</h1>
-        <Link to="/aset/new" className="btn btn-primary">
-          + Tambah Aset
-        </Link>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Link to="/aset/status" className="btn btn-secondary">
+            Update Status
+          </Link>
+          <Link to="/aset/new" className="btn btn-primary">
+            + Tambah Aset
+          </Link>
+        </div>
       </div>
 
       <div className="filter-bar">

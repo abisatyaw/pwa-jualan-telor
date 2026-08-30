@@ -3,6 +3,8 @@ import { BottomNav } from './components/BottomNav';
 import { Dashboard } from './pages/Dashboard';
 import { AssetList } from './pages/AssetList';
 import { AssetForm } from './pages/AssetForm';
+import { AssetStatusList } from './pages/AssetStatusList';
+import { AssetStatusForm } from './pages/AssetStatusForm';
 import { ProductionList } from './pages/ProductionList';
 import { ProductionForm } from './pages/ProductionForm';
 import { SaleList } from './pages/SaleList';
@@ -67,6 +69,8 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/aset" element={<AssetList />} />
             <Route path="/aset/new" element={<AssetForm />} />
+            <Route path="/aset/status" element={<AssetStatusList />} />
+            <Route path="/aset/status/new" element={<AssetStatusForm />} />
             <Route path="/aset/:id" element={<AssetForm />} />
             <Route path="/produksi" element={<ProductionList />} />
             <Route path="/produksi/new" element={<ProductionForm />} />

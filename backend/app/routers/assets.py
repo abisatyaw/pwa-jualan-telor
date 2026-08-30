@@ -10,13 +10,13 @@ router = APIRouter(prefix="/api/assets", tags=["assets"], dependencies=[Depends(
 @router.get("", response_model=list[schemas.AssetOut])
 def list_assets(asset_type: str | None = None, search: str | None = None, db: Session = Depends(get_db)):
     assets = crud.get_assets(db, asset_type=asset_type, search=search)
-    return [crud.asset_to_out(a) for a in assets]
+    return [crud.asset_to_out(a, db) for a in assets]
 
 
 @router.post("", response_model=schemas.AssetOut, status_code=201)
 def create_asset(payload: schemas.AssetCreate, db: Session = Depends(get_db)):
     asset = crud.create_asset(db, payload)
-    return crud.asset_to_out(asset)
+    return crud.asset_to_out(asset, db)
 
 
 @router.get("/{asset_id}", response_model=schemas.AssetOut)
@@ -24,7 +24,7 @@ def get_asset(asset_id: int, db: Session = Depends(get_db)):
     asset = crud.get_asset(db, asset_id)
     if asset is None:
         raise HTTPException(status_code=404, detail="Asset not found")
-    return crud.asset_to_out(asset)
+    return crud.asset_to_out(asset, db)
 
 
 @router.put("/{asset_id}", response_model=schemas.AssetOut)
@@ -33,7 +33,7 @@ def update_asset(asset_id: int, payload: schemas.AssetUpdate, db: Session = Depe
     if asset is None:
         raise HTTPException(status_code=404, detail="Asset not found")
     asset = crud.update_asset(db, asset, payload)
-    return crud.asset_to_out(asset)
+    return crud.asset_to_out(asset, db)
 
 
 @router.delete("/{asset_id}", dependencies=[Depends(require_admin)])

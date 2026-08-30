@@ -332,7 +332,7 @@ def set_hdp_target_percentage(db: Session, value: float) -> float:
 # ---------- Asset ----------
 
 
-def asset_to_out(asset: models.Asset) -> schemas.AssetOut:
+def asset_to_out(asset: models.Asset, db: Session) -> schemas.AssetOut:
     today = date.today()
     # acquisition_price is per-unit; straight-line depreciation runs on the whole
     # batch value. For the pre-quantity records (quantity defaults to 1) this is
@@ -346,6 +346,21 @@ def asset_to_out(asset: models.Asset) -> schemas.AssetOut:
     months_elapsed = _months_between(asset.acquisition_date, today)
     accumulated = min(total_acquisition_value, monthly_depreciation * months_elapsed)
     book_value = total_acquisition_value - accumulated
+
+    # Asset Status Updates (FB-018 / ADR 0004): every reason cuts active quantity;
+    # only "sold" writes book value down, prorated by the fraction of the original
+    # quantity sold (so a small partial sale is not a full write-off).
+    updates = list(
+        db.scalars(
+            select(models.AssetStatusUpdate).where(models.AssetStatusUpdate.asset_id == asset.id)
+        )
+    )
+    reduced_qty = sum(u.quantity_change for u in updates)
+    sold_qty = sum(u.quantity_change for u in updates if u.reason == "sold")
+    active_quantity = max(asset.quantity - reduced_qty, 0)
+    if sold_qty and asset.quantity:
+        book_value = round(book_value * (1 - min(sold_qty / asset.quantity, 1.0)))
+
     # FB-012 / ADR 0004: recompute the zero-book-value month from the CURRENT
     # book value, so a partial-disposal write-off moves the date rather than
     # leaving it fixed at acquisition + depreciation_months.
@@ -375,8 +390,64 @@ def asset_to_out(asset: models.Asset) -> schemas.AssetOut:
         monthly_depreciation=monthly_depreciation,
         book_value=book_value,
         book_value_zero_date=book_value_zero_date,
+        active_quantity=active_quantity,
         current_age_weeks=current_age_weeks,
     )
+
+
+# ---------- Asset Status Update ----------
+
+
+def asset_status_update_to_out(u: models.AssetStatusUpdate) -> schemas.AssetStatusUpdateOut:
+    return schemas.AssetStatusUpdateOut(
+        id=u.id,
+        asset_id=u.asset_id,
+        asset_name=u.asset.asset_name if u.asset else "",
+        update_date=u.update_date,
+        quantity_change=u.quantity_change,
+        reason=u.reason,
+        notes=u.notes,
+        created_at=u.created_at,
+    )
+
+
+def get_asset_status_updates(db: Session, asset_id: int | None = None) -> list[models.AssetStatusUpdate]:
+    stmt = select(models.AssetStatusUpdate)
+    if asset_id is not None:
+        stmt = stmt.where(models.AssetStatusUpdate.asset_id == asset_id)
+    stmt = stmt.order_by(models.AssetStatusUpdate.update_date.desc(), models.AssetStatusUpdate.id.desc())
+    return list(db.scalars(stmt))
+
+
+def get_asset_status_update(db: Session, update_id: int) -> models.AssetStatusUpdate | None:
+    return db.get(models.AssetStatusUpdate, update_id)
+
+
+class AssetStatusError(ValueError):
+    pass
+
+
+def create_asset_status_update(
+    db: Session, payload: schemas.AssetStatusUpdateCreate
+) -> models.AssetStatusUpdate:
+    asset = db.get(models.Asset, payload.asset_id)
+    if asset is None:
+        raise AssetStatusError("Aset tidak ditemukan.")
+    if payload.reason in ("dead", "missing") and asset.asset_type.strip().lower() != "ayam":
+        raise AssetStatusError("Status 'mati'/'hilang' hanya untuk aset ayam.")
+    active = asset_to_out(asset, db).active_quantity
+    if payload.quantity_change > active:
+        raise AssetStatusError(f"Perubahan ({payload.quantity_change}) melebihi jumlah aktif ({active}).")
+    update = models.AssetStatusUpdate(**payload.model_dump())
+    db.add(update)
+    db.commit()
+    db.refresh(update)
+    return update
+
+
+def delete_asset_status_update(db: Session, update: models.AssetStatusUpdate) -> None:
+    db.delete(update)
+    db.commit()
 
 
 def get_assets(db: Session, asset_type: str | None = None, search: str | None = None) -> list[models.Asset]:

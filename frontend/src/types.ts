@@ -48,7 +48,30 @@ export interface Asset extends AssetInput {
   monthly_depreciation: number;
   book_value: number;
   book_value_zero_date: string | null;
+  active_quantity: number;
   current_age_weeks: number | null;
+}
+
+export type AssetStatusReason = 'dead' | 'sold' | 'missing';
+
+export const ASSET_STATUS_REASON_LABELS: Record<AssetStatusReason, string> = {
+  dead: 'Mati',
+  sold: 'Dijual',
+  missing: 'Hilang',
+};
+
+export interface AssetStatusUpdateInput {
+  asset_id: number;
+  update_date: string;
+  quantity_change: number;
+  reason: AssetStatusReason;
+  notes: string | null;
+}
+
+export interface AssetStatusUpdate extends AssetStatusUpdateInput {
+  id: number;
+  asset_name: string;
+  created_at: string;
 }
 
 // ---------- Production ----------

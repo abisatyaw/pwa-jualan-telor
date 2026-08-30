@@ -1,6 +1,8 @@
 import type {
   Asset,
   AssetInput,
+  AssetStatusUpdate,
+  AssetStatusUpdateInput,
   DashboardOverview,
   Debt,
   DebtInput,
@@ -74,6 +76,14 @@ export const api = {
     update: (id: number, data: AssetInput) =>
       request<Asset>(`/assets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     remove: (id: number) => request<{ deleted: boolean }>(`/assets/${id}`, { method: 'DELETE' }),
+  },
+  assetStatus: {
+    list: (params: { asset_id?: number } = {}) =>
+      request<AssetStatusUpdate[]>(`/asset-status-updates${qs(params)}`),
+    create: (data: AssetStatusUpdateInput) =>
+      request<AssetStatusUpdate>('/asset-status-updates', { method: 'POST', body: JSON.stringify(data) }),
+    remove: (id: number) =>
+      request<{ deleted: boolean }>(`/asset-status-updates/${id}`, { method: 'DELETE' }),
   },
   productions: {
     list: (params: { date_from?: string; date_to?: string; chicken_group?: string } = {}) =>

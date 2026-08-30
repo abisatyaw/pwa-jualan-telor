@@ -118,7 +118,33 @@ class AssetOut(AssetBase):
     monthly_depreciation: int
     book_value: int
     book_value_zero_date: date | None = None
+    active_quantity: int
     current_age_weeks: int | None = None
+
+
+# ---------- Asset Status Update ----------
+
+AssetStatusReason = Literal["dead", "sold", "missing"]
+
+
+class AssetStatusUpdateBase(BaseModel):
+    asset_id: int
+    update_date: date
+    quantity_change: int = Field(gt=0)
+    reason: AssetStatusReason
+    notes: str | None = None
+
+
+class AssetStatusUpdateCreate(AssetStatusUpdateBase):
+    pass
+
+
+class AssetStatusUpdateOut(AssetStatusUpdateBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    asset_name: str
+    created_at: datetime
 
 
 # ---------- Production ----------
