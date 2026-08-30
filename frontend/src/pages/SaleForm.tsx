@@ -140,7 +140,7 @@ export function SaleForm() {
               type="number"
               inputMode="decimal"
               min={0}
-              step="0.1"
+              step="0.001"
               value={form.quantity === 0 ? '' : form.quantity}
               onFocus={(e) => e.target.select()}
               onChange={(e) => update('quantity', e.target.value === '' ? 0 : Number(e.target.value))}

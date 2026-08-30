@@ -7,6 +7,7 @@ const ITEMS = [
   { to: '/penjualan', label: 'Jual', icon: '💰' },
   { to: '/transaksi', label: 'Transaksi', icon: '📒' },
   { to: '/hutang', label: 'Hutang', icon: '🏦' },
+  { to: '/keuangan', label: 'Keuangan', icon: '📊' },
   { to: '/setting', label: 'Setting', icon: '⚙️' },
 ];
 

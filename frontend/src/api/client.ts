@@ -1,9 +1,12 @@
 import type {
   Asset,
   AssetInput,
+  AssetStatusUpdate,
+  AssetStatusUpdateInput,
   DashboardOverview,
   Debt,
   DebtInput,
+  FinancialReport,
   DropdownOption,
   EggPrice,
   KgPerKarungRow,
@@ -75,6 +78,14 @@ export const api = {
       request<Asset>(`/assets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     remove: (id: number) => request<{ deleted: boolean }>(`/assets/${id}`, { method: 'DELETE' }),
   },
+  assetStatus: {
+    list: (params: { asset_id?: number } = {}) =>
+      request<AssetStatusUpdate[]>(`/asset-status-updates${qs(params)}`),
+    create: (data: AssetStatusUpdateInput) =>
+      request<AssetStatusUpdate>('/asset-status-updates', { method: 'POST', body: JSON.stringify(data) }),
+    remove: (id: number) =>
+      request<{ deleted: boolean }>(`/asset-status-updates/${id}`, { method: 'DELETE' }),
+  },
   productions: {
     list: (params: { date_from?: string; date_to?: string; chicken_group?: string } = {}) =>
       request<Production[]>(`/productions${qs(params)}`),
@@ -125,6 +136,7 @@ export const api = {
   },
   dashboard: (params: { period: string; from?: string; to?: string }) =>
     request<DashboardOverview>(`/dashboard${qs(params)}`),
+  financial: () => request<FinancialReport>('/financial'),
   eggPrices: {
     list: () => request<EggPrice[]>('/egg-prices'),
     refresh: () => request<EggPrice[]>('/egg-prices/refresh', { method: 'POST' }),
@@ -162,6 +174,18 @@ export const api = {
       request<KgPerKarungRow>('/settings/kg-per-karung', {
         method: 'PUT',
         body: JSON.stringify({ feed_type, value }),
+      }),
+    getInvestorCapital: () => request<{ value: number }>('/settings/investor-capital'),
+    updateInvestorCapital: (value: number) =>
+      request<{ value: number }>('/settings/investor-capital', {
+        method: 'PUT',
+        body: JSON.stringify({ value }),
+      }),
+    getOpeningBankCash: () => request<{ value: number }>('/settings/opening-bank-cash'),
+    updateOpeningBankCash: (value: number) =>
+      request<{ value: number }>('/settings/opening-bank-cash', {
+        method: 'PUT',
+        body: JSON.stringify({ value }),
       }),
   },
 };

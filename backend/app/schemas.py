@@ -49,6 +49,10 @@ class HdpTarget(BaseModel):
     value: float = Field(ge=0, le=100)
 
 
+class IntSetting(BaseModel):
+    value: int = Field(ge=0)
+
+
 class FcrTarget(BaseModel):
     value: float = Field(gt=0)
 
@@ -90,6 +94,8 @@ class DropdownOptionOut(BaseModel):
 class AssetBase(BaseModel):
     asset_name: str = Field(min_length=1)
     asset_type: str = Field(min_length=1)
+    quantity: int = Field(default=1, gt=0)
+    # per-unit price; the depreciable basis is quantity * acquisition_price
     acquisition_price: int = Field(ge=0)
     acquisition_date: date
     depreciation_months: int = Field(ge=0, default=0)
@@ -112,9 +118,37 @@ class AssetOut(AssetBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    total_acquisition_value: int
     monthly_depreciation: int
     book_value: int
+    book_value_zero_date: date | None = None
+    active_quantity: int
     current_age_weeks: int | None = None
+
+
+# ---------- Asset Status Update ----------
+
+AssetStatusReason = Literal["dead", "sold", "missing"]
+
+
+class AssetStatusUpdateBase(BaseModel):
+    asset_id: int
+    update_date: date
+    quantity_change: int = Field(gt=0)
+    reason: AssetStatusReason
+    notes: str | None = None
+
+
+class AssetStatusUpdateCreate(AssetStatusUpdateBase):
+    pass
+
+
+class AssetStatusUpdateOut(AssetStatusUpdateBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    asset_name: str
+    created_at: datetime
 
 
 # ---------- Production ----------
@@ -124,6 +158,8 @@ class ProductionBase(BaseModel):
     production_date: date
     chicken_group: str = Field(min_length=1)
     quantity_kg: float = Field(ge=0)
+    # average weight of one egg in kg; None on input means "use the current setting"
+    average_egg_weight_kg: float | None = Field(default=None, gt=0)
     notes: str | None = None
 
 
@@ -139,6 +175,8 @@ class ProductionOut(ProductionBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    average_egg_weight_kg: float
+    estimated_egg_count: int
     created_at: datetime
     updated_at: datetime
 
@@ -186,9 +224,11 @@ class SaleOut(SaleBase):
 class TransactionBase(BaseModel):
     transaction_date: date
     category: str = Field(min_length=1)
+    # when qty and unit_price are both given, the server recomputes amount = qty * unit_price
     amount: int = Field(ge=0)
     qty: float | None = Field(default=None, ge=0)
     qty_unit: str | None = None
+    unit_price: int | None = Field(default=None, ge=0)
     feed_type: str | None = None
     notes: str | None = None
 
@@ -205,7 +245,6 @@ class TransactionOut(TransactionBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    qty_per_group: float | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -253,10 +292,16 @@ class ProductionTrendPoint(BaseModel):
     quantity_kg: float
 
 
+class ProductionWeekPoint(BaseModel):
+    week_label: str
+    total_kg: float
+
+
 class ProductionSummary(BaseModel):
     total_kg: float
     by_group: dict[str, float]
     trend: list[ProductionTrendPoint]
+    weekly: list[ProductionWeekPoint]
 
 
 class WeeklyTransactionRow(BaseModel):
@@ -295,6 +340,68 @@ class StockPosition(BaseModel):
     egg_prices: list[EggPriceOut]
 
 
+class MetricPoint(BaseModel):
+    label: str
+    value: float
+
+
+class FcrSummary(BaseModel):
+    # feed consumed (kg) / eggs produced (kg) for the selected period; None when
+    # there is no production to divide by
+    value: float | None
+    target: float | None  # from the fcr_target setting; None = not configured
+    trend: list[MetricPoint]  # one point per month in range
+
+
+class HdpSummary(BaseModel):
+    # mean Hen Day Production % over the selected period
+    value: float | None
+    target: float  # hdp_target_percentage setting (default 85)
+    trend: list[MetricPoint]
+
+
+class FinancialStatement(BaseModel):
+    label: str
+    period_from: date
+    period_to: date
+    # Profit & loss (accrual, for the period)
+    sales_revenue: int
+    cogs: int
+    gross_profit: int
+    operating_expenses: int
+    ebitda: int
+    depreciation_expense: int
+    net_profit: int
+    # Cash flow (for the period)
+    cf_operating: int
+    cf_investing: int
+    cf_financing: int
+    net_cash_change: int
+    # Balance sheet (as of period_to, from inception)
+    cash_balance: int
+    accounts_receivable: int
+    asset_book_value: int
+    total_assets: int
+    accounts_payable: int
+    accumulated_depreciation: int
+    paid_in_capital: int
+    retained_earnings: int
+    total_equity: int
+    total_liabilities_equity: int
+    # ROI (cumulative net profit / invested capital)
+    invested_capital: int
+    roi_pct: float
+    # Bank reconciliation (for the period)
+    bank_cash_in: int
+    bank_cash_out: int
+
+
+class FinancialReport(BaseModel):
+    mtd: FinancialStatement
+    ytd: FinancialStatement
+    monthly_net_profit: list[MetricPoint]
+
+
 class DashboardOverview(BaseModel):
     production: ProductionSummary
     weekly_transactions: list[WeeklyTransactionRow]
@@ -302,5 +409,7 @@ class DashboardOverview(BaseModel):
     total_receivable: int
     debts_outstanding: int
     stock: StockPosition
+    fcr: FcrSummary
+    hdp: HdpSummary
     expense_total: int
     sales_total: int

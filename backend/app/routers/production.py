@@ -16,12 +16,13 @@ def list_productions(
     chicken_group: str | None = None,
     db: Session = Depends(get_db),
 ):
-    return crud.get_productions(db, date_from=date_from, date_to=date_to, chicken_group=chicken_group)
+    productions = crud.get_productions(db, date_from=date_from, date_to=date_to, chicken_group=chicken_group)
+    return [crud.production_to_out(p) for p in productions]
 
 
 @router.post("", response_model=schemas.ProductionOut, status_code=201)
 def create_production(payload: schemas.ProductionCreate, db: Session = Depends(get_db)):
-    return crud.create_production(db, payload)
+    return crud.production_to_out(crud.create_production(db, payload))
 
 
 @router.get("/{production_id}", response_model=schemas.ProductionOut)
@@ -29,7 +30,7 @@ def get_production(production_id: int, db: Session = Depends(get_db)):
     production = crud.get_production(db, production_id)
     if production is None:
         raise HTTPException(status_code=404, detail="Production not found")
-    return production
+    return crud.production_to_out(production)
 
 
 @router.put("/{production_id}", response_model=schemas.ProductionOut)
@@ -37,7 +38,7 @@ def update_production(production_id: int, payload: schemas.ProductionUpdate, db:
     production = crud.get_production(db, production_id)
     if production is None:
         raise HTTPException(status_code=404, detail="Production not found")
-    return crud.update_production(db, production, payload)
+    return crud.production_to_out(crud.update_production(db, production, payload))
 
 
 @router.delete("/{production_id}", dependencies=[Depends(require_admin)])

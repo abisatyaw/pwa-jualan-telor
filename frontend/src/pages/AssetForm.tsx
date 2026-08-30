@@ -3,11 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { SearchableSelect } from '../components/SearchableSelect';
 import type { AssetInput } from '../types';
-import { todayIso } from '../utils';
+import { formatRupiah, todayIso } from '../utils';
 
 const EMPTY: AssetInput = {
   asset_name: '',
   asset_type: '',
+  quantity: 1,
   acquisition_price: 0,
   acquisition_date: todayIso(),
   depreciation_months: 36,
@@ -37,6 +38,7 @@ export function AssetForm() {
         setForm({
           asset_name: a.asset_name,
           asset_type: a.asset_type,
+          quantity: a.quantity,
           acquisition_price: a.acquisition_price,
           acquisition_date: a.acquisition_date,
           depreciation_months: a.depreciation_months,
@@ -111,7 +113,19 @@ export function AssetForm() {
 
         <div className="form-row">
           <div className="form-group">
-            <label className="form-label">Harga Akuisisi (Rp)</label>
+            <label className="form-label">Jumlah (QTY)</label>
+            <input
+              className="form-control"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={form.quantity}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => update('quantity', e.target.value === '' ? 1 : Number(e.target.value))}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Harga Akuisisi / Unit (Rp)</label>
             <input
               className="form-control"
               type="number"
@@ -120,6 +134,18 @@ export function AssetForm() {
               value={form.acquisition_price === 0 ? '' : form.acquisition_price}
               onFocus={(e) => e.target.select()}
               onChange={(e) => update('acquisition_price', e.target.value === '' ? 0 : Number(e.target.value))}
+            />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Total Harga Akuisisi (Rp)</label>
+            <input
+              className="form-control"
+              value={formatRupiah(form.quantity * form.acquisition_price)}
+              readOnly
+              tabIndex={-1}
             />
           </div>
           <div className="form-group">

@@ -31,6 +31,7 @@ export interface UserCreateInput {
 export interface AssetInput {
   asset_name: string;
   asset_type: string;
+  quantity: number;
   acquisition_price: number;
   acquisition_date: string;
   depreciation_months: number;
@@ -43,9 +44,34 @@ export interface Asset extends AssetInput {
   id: number;
   created_at: string;
   updated_at: string;
+  total_acquisition_value: number;
   monthly_depreciation: number;
   book_value: number;
+  book_value_zero_date: string | null;
+  active_quantity: number;
   current_age_weeks: number | null;
+}
+
+export type AssetStatusReason = 'dead' | 'sold' | 'missing';
+
+export const ASSET_STATUS_REASON_LABELS: Record<AssetStatusReason, string> = {
+  dead: 'Mati',
+  sold: 'Dijual',
+  missing: 'Hilang',
+};
+
+export interface AssetStatusUpdateInput {
+  asset_id: number;
+  update_date: string;
+  quantity_change: number;
+  reason: AssetStatusReason;
+  notes: string | null;
+}
+
+export interface AssetStatusUpdate extends AssetStatusUpdateInput {
+  id: number;
+  asset_name: string;
+  created_at: string;
 }
 
 // ---------- Production ----------
@@ -54,11 +80,14 @@ export interface ProductionInput {
   production_date: string;
   chicken_group: string;
   quantity_kg: number;
+  average_egg_weight_kg: number | null;
   notes: string | null;
 }
 
 export interface Production extends ProductionInput {
   id: number;
+  average_egg_weight_kg: number;
+  estimated_egg_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -100,13 +129,13 @@ export interface TransactionInput {
   amount: number;
   qty: number | null;
   qty_unit: string | null;
+  unit_price: number | null;
   feed_type: string | null;
   notes: string | null;
 }
 
 export interface Transaction extends TransactionInput {
   id: number;
-  qty_per_group: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -147,10 +176,16 @@ export interface ProductionTrendPoint {
   quantity_kg: number;
 }
 
+export interface ProductionWeekPoint {
+  week_label: string;
+  total_kg: number;
+}
+
 export interface ProductionSummary {
   total_kg: number;
   by_group: Record<string, number>;
   trend: ProductionTrendPoint[];
+  weekly: ProductionWeekPoint[];
 }
 
 export interface WeeklyTransactionRow {
@@ -187,6 +222,60 @@ export interface StockPosition {
   egg_prices: EggPrice[];
 }
 
+export interface MetricPoint {
+  label: string;
+  value: number;
+}
+
+export interface FcrSummary {
+  value: number | null;
+  target: number | null;
+  trend: MetricPoint[];
+}
+
+export interface HdpSummary {
+  value: number | null;
+  target: number;
+  trend: MetricPoint[];
+}
+
+export interface FinancialStatement {
+  label: string;
+  period_from: string;
+  period_to: string;
+  sales_revenue: number;
+  cogs: number;
+  gross_profit: number;
+  operating_expenses: number;
+  ebitda: number;
+  depreciation_expense: number;
+  net_profit: number;
+  cf_operating: number;
+  cf_investing: number;
+  cf_financing: number;
+  net_cash_change: number;
+  cash_balance: number;
+  accounts_receivable: number;
+  asset_book_value: number;
+  total_assets: number;
+  accounts_payable: number;
+  accumulated_depreciation: number;
+  paid_in_capital: number;
+  retained_earnings: number;
+  total_equity: number;
+  total_liabilities_equity: number;
+  invested_capital: number;
+  roi_pct: number;
+  bank_cash_in: number;
+  bank_cash_out: number;
+}
+
+export interface FinancialReport {
+  mtd: FinancialStatement;
+  ytd: FinancialStatement;
+  monthly_net_profit: MetricPoint[];
+}
+
 export interface DashboardOverview {
   production: ProductionSummary;
   weekly_transactions: WeeklyTransactionRow[];
@@ -194,6 +283,8 @@ export interface DashboardOverview {
   total_receivable: number;
   debts_outstanding: number;
   stock: StockPosition;
+  fcr: FcrSummary;
+  hdp: HdpSummary;
   expense_total: number;
   sales_total: number;
 }

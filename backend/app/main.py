@@ -9,7 +9,18 @@ from sqlalchemy import text
 
 from . import crud
 from .database import SessionLocal
-from .routers import assets, auth, dashboard, debts, production, sales, settings, transactions, users
+from .routers import (
+    asset_status,
+    assets,
+    auth,
+    dashboard,
+    debts,
+    production,
+    sales,
+    settings,
+    transactions,
+    users,
+)
 
 # Schema is managed by Alembic migrations (see migrations/), not create_all.
 # Run `alembic upgrade head` (via scripts/bootstrap_alembic.py first, for
@@ -51,6 +62,7 @@ async def health():
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(assets.router)
+app.include_router(asset_status.router)
 app.include_router(production.router)
 app.include_router(sales.router)
 app.include_router(transactions.router)

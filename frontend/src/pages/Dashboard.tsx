@@ -1,5 +1,16 @@
 import { useEffect, useState } from 'react';
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { api } from '../api/client';
 import { KpiCard } from '../components/KpiCard';
 import { PaymentDialog } from '../components/PaymentDialog';
@@ -139,6 +150,70 @@ export function Dashboard() {
                     dot={false}
                     isAnimationActive={false}
                   />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+
+            <h3 style={{ marginTop: 16 }}>Produksi per Minggu</h3>
+            {data.production.weekly.length === 0 ? (
+              <div className="empty-state">Belum ada data produksi.</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={data.production.weekly}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="week_label" tick={{ fontSize: 12 }} />
+                  <YAxis tickFormatter={shortKg} tick={{ fontSize: 12 }} width={50} />
+                  <Tooltip formatter={(v) => `${formatQty(Number(v))} Kg`} />
+                  <Bar dataKey="total_kg" fill="#b45309" isAnimationActive={false} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* 1b. FCR & HDP */}
+          <div className="chart-section">
+            <div className="kpi-grid kpi-grid-4">
+              <KpiCard
+                label="FCR (Periode)"
+                value={data.fcr.value == null ? '—' : data.fcr.value.toLocaleString('id-ID')}
+                accent
+              />
+              <KpiCard
+                label="HDP Rata-rata"
+                value={data.hdp.value == null ? '—' : `${data.hdp.value.toLocaleString('id-ID')}%`}
+              />
+            </div>
+
+            <h3>Tren FCR (pakan kg / telur kg)</h3>
+            {data.fcr.trend.length === 0 ? (
+              <div className="empty-state">Belum cukup data pakan & produksi.</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={data.fcr.trend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="label" tickFormatter={(l) => formatBucketLabel(l, true)} tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} width={44} />
+                  <Tooltip labelFormatter={(l) => formatBucketLabel(String(l))} />
+                  {data.fcr.target != null && (
+                    <ReferenceLine y={data.fcr.target} stroke="#16a34a" strokeDasharray="4 4" label={`Target ${data.fcr.target}`} />
+                  )}
+                  <Line type="monotone" dataKey="value" stroke="#b45309" strokeWidth={2} dot isAnimationActive={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+
+            <h3 style={{ marginTop: 16 }}>Tren HDP (%)</h3>
+            {data.hdp.trend.length === 0 ? (
+              <div className="empty-state">Belum ada data ayam & produksi.</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={data.hdp.trend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="label" tickFormatter={(l) => formatBucketLabel(l, true)} tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} width={44} domain={[0, 100]} />
+                  <Tooltip formatter={(v) => `${v}%`} labelFormatter={(l) => formatBucketLabel(String(l))} />
+                  <ReferenceLine y={data.hdp.target} stroke="#16a34a" strokeDasharray="4 4" label={`Target ${data.hdp.target}%`} />
+                  <Line type="monotone" dataKey="value" stroke="#b45309" strokeWidth={2} dot={false} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
             )}

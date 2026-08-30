@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useAuth } from '../context/AuthContext';
 import type { DropdownOption, KgPerKarungRow, User, UserRole } from '../types';
+import { formatRupiah } from '../utils';
 
 interface OptionListProps {
   title: string;
@@ -381,6 +382,25 @@ function UserManagement() {
   );
 }
 
+interface SettingsGroupProps {
+  title: string;
+  subtitle: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}
+
+function SettingsGroup({ title, subtitle, defaultOpen = false, children }: SettingsGroupProps) {
+  return (
+    <details className="settings-group" open={defaultOpen}>
+      <summary className="settings-group-summary">
+        <span className="settings-group-title">{title}</span>
+        <span className="hint-text">{subtitle}</span>
+      </summary>
+      <div className="settings-group-body">{children}</div>
+    </details>
+  );
+}
+
 export function Settings() {
   const { user, logout } = useAuth();
   const isAdmin = user?.role === 'admin';
@@ -401,40 +421,74 @@ export function Settings() {
         </button>
       </div>
 
-      <OptionList title="Jenis Aset" listKey="asset_type" isAdmin={isAdmin} />
-      <OptionList title="Kelompok Ayam" listKey="chicken_group" isAdmin={isAdmin} />
-      <OptionList title="Jenis Produk Penjualan" listKey="sale_product_type" isAdmin={isAdmin} />
-      <OptionList title="Satuan Penjualan" listKey="sale_unit" isAdmin={isAdmin} />
-      <OptionList title="Kategori Transaksi Harian" listKey="transaction_category" isAdmin={isAdmin} />
-      <OptionList title="Jenis Pakan" listKey="feed_type" isAdmin={isAdmin} />
-      <KotakSetting isAdmin={isAdmin} />
-      <ScalarSetting
-        title="Berat Rata-rata 1 Butir Telur (kg)"
-        hint={(v) => `Default berat per butir: ${v ?? '...'} kg. Dipakai untuk estimasi jumlah butir & HDP.`}
-        step="0.001"
-        isAdmin={isAdmin}
-        load={api.settings.getAverageEggWeight}
-        save={api.settings.updateAverageEggWeight}
-      />
-      <ScalarSetting
-        title="Target HDP (%)"
-        hint={(v) => `Target Hen Day Production: ${v ?? '...'}%`}
-        step="1"
-        isAdmin={isAdmin}
-        load={api.settings.getHdpTarget}
-        save={api.settings.updateHdpTarget}
-      />
-      <ScalarSetting
-        title="Target FCR"
-        hint={(v) => (v === null ? 'Target FCR belum diatur.' : `Target FCR: ${v}`)}
-        step="0.01"
-        isAdmin={isAdmin}
-        load={api.settings.getFcrTarget}
-        save={api.settings.updateFcrTarget}
-        allowUnset
-      />
-      <KgPerKarungSetting isAdmin={isAdmin} />
-      {isAdmin && <UserManagement />}
+      <SettingsGroup
+        title="Opsi Pilihan Form"
+        subtitle="Nilai dropdown yang muncul di form aset, produksi, penjualan, dan transaksi"
+        defaultOpen
+      >
+        <OptionList title="Jenis Aset" listKey="asset_type" isAdmin={isAdmin} />
+        <OptionList title="Kelompok Ayam" listKey="chicken_group" isAdmin={isAdmin} />
+        <OptionList title="Jenis Produk Penjualan" listKey="sale_product_type" isAdmin={isAdmin} />
+        <OptionList title="Satuan Penjualan" listKey="sale_unit" isAdmin={isAdmin} />
+        <OptionList title="Kategori Transaksi Harian" listKey="transaction_category" isAdmin={isAdmin} />
+        <OptionList title="Jenis Pakan" listKey="feed_type" isAdmin={isAdmin} />
+      </SettingsGroup>
+
+      <SettingsGroup
+        title="Parameter Perhitungan"
+        subtitle="Faktor konversi dan target yang dipakai dashboard (FCR, HDP, estimasi butir, stok)"
+      >
+        <KotakSetting isAdmin={isAdmin} />
+        <ScalarSetting
+          title="Berat Rata-rata 1 Butir Telur (kg)"
+          hint={(v) => `Default berat per butir: ${v ?? '...'} kg. Dipakai untuk estimasi jumlah butir & HDP.`}
+          step="0.001"
+          isAdmin={isAdmin}
+          load={api.settings.getAverageEggWeight}
+          save={api.settings.updateAverageEggWeight}
+        />
+        <ScalarSetting
+          title="Target HDP (%)"
+          hint={(v) => `Target Hen Day Production: ${v ?? '...'}%`}
+          step="1"
+          isAdmin={isAdmin}
+          load={api.settings.getHdpTarget}
+          save={api.settings.updateHdpTarget}
+        />
+        <ScalarSetting
+          title="Target FCR"
+          hint={(v) => (v === null ? 'Target FCR belum diatur.' : `Target FCR: ${v}`)}
+          step="0.01"
+          isAdmin={isAdmin}
+          load={api.settings.getFcrTarget}
+          save={api.settings.updateFcrTarget}
+          allowUnset
+        />
+        <KgPerKarungSetting isAdmin={isAdmin} />
+        <ScalarSetting
+          title="Modal Investor (Rp)"
+          hint={(v) => `Modal ditanamkan investor: ${formatRupiah(v ?? 0)}. Dipakai untuk ROI & neraca.`}
+          step="1000000"
+          isAdmin={isAdmin}
+          load={api.settings.getInvestorCapital}
+          save={api.settings.updateInvestorCapital}
+        />
+        <ScalarSetting
+          title="Kas Bank Awal (Rp)"
+          hint={(v) => `Modal kerja awal / saldo kas awal: ${formatRupiah(v ?? 0)}.`}
+          step="1000000"
+          isAdmin={isAdmin}
+          load={api.settings.getOpeningBankCash}
+          save={api.settings.updateOpeningBankCash}
+          allowUnset
+        />
+      </SettingsGroup>
+
+      {isAdmin && (
+        <SettingsGroup title="Kelola Pengguna" subtitle="Tambah atau hapus akun login">
+          <UserManagement />
+        </SettingsGroup>
+      )}
     </div>
   );
 }

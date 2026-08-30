@@ -44,6 +44,22 @@ FCR_TARGET_SETTING_KEY = "fcr_target"
 DEFAULT_HDP_TARGET_PERCENTAGE = 85.0
 HDP_TARGET_SETTING_KEY = "hdp_target_percentage"
 
+# FB-019: investor capital (equity) and the opening bank cash (working capital).
+DEFAULT_INVESTOR_CAPITAL = 140_000_000
+INVESTOR_CAPITAL_SETTING_KEY = "investor_capital"
+DEFAULT_OPENING_BANK_CASH = 0
+OPENING_BANK_CASH_SETTING_KEY = "opening_bank_cash"
+
+
+# Fractional quantities (kg, kotak, karung) are kept to 3 decimals everywhere
+# (GEN-003 / FB-013 / FB-015) so small differences stay visible and stored values
+# match what the form shows.
+QTY_DECIMALS = 3
+
+
+def quantize_qty(value: float | None) -> float | None:
+    return None if value is None else round(value, QTY_DECIMALS)
+
 
 def kg_equivalent(qty: float | None, unit: str | None, kotak_to_kg: float) -> float:
     if not qty:
@@ -145,6 +161,10 @@ def seed_default_settings(db: Session) -> None:
         )
     if db.get(models.Setting, HDP_TARGET_SETTING_KEY) is None:
         db.add(models.Setting(key=HDP_TARGET_SETTING_KEY, value=str(DEFAULT_HDP_TARGET_PERCENTAGE)))
+    if db.get(models.Setting, INVESTOR_CAPITAL_SETTING_KEY) is None:
+        db.add(models.Setting(key=INVESTOR_CAPITAL_SETTING_KEY, value=str(DEFAULT_INVESTOR_CAPITAL)))
+    if db.get(models.Setting, OPENING_BANK_CASH_SETTING_KEY) is None:
+        db.add(models.Setting(key=OPENING_BANK_CASH_SETTING_KEY, value=str(DEFAULT_OPENING_BANK_CASH)))
     # fcr_target is intentionally not seeded here - see FCR_TARGET_SETTING_KEY.
     for feed_type in DEFAULT_OPTIONS["feed_type"]:
         key = kg_per_karung_setting_key(feed_type)
@@ -319,19 +339,82 @@ def set_hdp_target_percentage(db: Session, value: float) -> float:
     return value
 
 
+def _get_int_setting(db: Session, key: str, default: int) -> int:
+    setting = db.get(models.Setting, key)
+    return int(float(setting.value)) if setting else default
+
+
+def _set_int_setting(db: Session, key: str, value: int) -> int:
+    setting = db.get(models.Setting, key)
+    if setting is None:
+        db.add(models.Setting(key=key, value=str(value)))
+    else:
+        setting.value = str(value)
+    db.commit()
+    return value
+
+
+def get_investor_capital(db: Session) -> int:
+    return _get_int_setting(db, INVESTOR_CAPITAL_SETTING_KEY, DEFAULT_INVESTOR_CAPITAL)
+
+
+def set_investor_capital(db: Session, value: int) -> int:
+    return _set_int_setting(db, INVESTOR_CAPITAL_SETTING_KEY, value)
+
+
+def get_opening_bank_cash(db: Session) -> int:
+    return _get_int_setting(db, OPENING_BANK_CASH_SETTING_KEY, DEFAULT_OPENING_BANK_CASH)
+
+
+def set_opening_bank_cash(db: Session, value: int) -> int:
+    return _set_int_setting(db, OPENING_BANK_CASH_SETTING_KEY, value)
+
+
 # ---------- Asset ----------
 
 
-def asset_to_out(asset: models.Asset) -> schemas.AssetOut:
+def asset_to_out(asset: models.Asset, db: Session) -> schemas.AssetOut:
     today = date.today()
+    # acquisition_price is per-unit; straight-line depreciation runs on the whole
+    # batch value. For the pre-quantity records (quantity defaults to 1) this is
+    # unchanged.
+    total_acquisition_value = asset.quantity * asset.acquisition_price
     monthly_depreciation = (
-        round(asset.acquisition_price / asset.depreciation_months)
+        round(total_acquisition_value / asset.depreciation_months)
         if asset.depreciation_months > 0
         else 0
     )
-    months_elapsed = _months_between(asset.acquisition_date, today)
-    accumulated = min(asset.acquisition_price, monthly_depreciation * months_elapsed)
-    book_value = asset.acquisition_price - accumulated
+    # full-month convention: the acquisition month counts as month 0, so the
+    # depreciation the financial report attributes to a period lines up with the
+    # book value here (FB-019 balance sheet ties out).
+    months_elapsed = max(
+        (today.year - asset.acquisition_date.year) * 12 + (today.month - asset.acquisition_date.month), 0
+    )
+    accumulated = min(total_acquisition_value, monthly_depreciation * months_elapsed)
+    book_value = total_acquisition_value - accumulated
+
+    # Asset Status Updates (FB-018 / ADR 0004): every reason cuts active quantity;
+    # only "sold" writes book value down, prorated by the fraction of the original
+    # quantity sold (so a small partial sale is not a full write-off).
+    updates = list(
+        db.scalars(
+            select(models.AssetStatusUpdate).where(models.AssetStatusUpdate.asset_id == asset.id)
+        )
+    )
+    reduced_qty = sum(u.quantity_change for u in updates)
+    sold_qty = sum(u.quantity_change for u in updates if u.reason == "sold")
+    active_quantity = max(asset.quantity - reduced_qty, 0)
+    if sold_qty and asset.quantity:
+        book_value = round(book_value * (1 - min(sold_qty / asset.quantity, 1.0)))
+
+    # FB-012 / ADR 0004: recompute the zero-book-value month from the CURRENT
+    # book value, so a partial-disposal write-off moves the date rather than
+    # leaving it fixed at acquisition + depreciation_months.
+    book_value_zero_date = None
+    if monthly_depreciation > 0 and book_value > 0:
+        months_left = -(-book_value // monthly_depreciation)  # ceil division
+        total_month = today.month - 1 + months_left
+        book_value_zero_date = date(today.year + total_month // 12, total_month % 12 + 1, 1)
     current_age_weeks = None
     if asset.chicken_age_weeks_at_purchase is not None:
         weeks_elapsed = max((today - asset.acquisition_date).days // 7, 0)
@@ -340,6 +423,7 @@ def asset_to_out(asset: models.Asset) -> schemas.AssetOut:
         id=asset.id,
         asset_name=asset.asset_name,
         asset_type=asset.asset_type,
+        quantity=asset.quantity,
         acquisition_price=asset.acquisition_price,
         acquisition_date=asset.acquisition_date,
         depreciation_months=asset.depreciation_months,
@@ -348,10 +432,68 @@ def asset_to_out(asset: models.Asset) -> schemas.AssetOut:
         notes=asset.notes,
         created_at=asset.created_at,
         updated_at=asset.updated_at,
+        total_acquisition_value=total_acquisition_value,
         monthly_depreciation=monthly_depreciation,
         book_value=book_value,
+        book_value_zero_date=book_value_zero_date,
+        active_quantity=active_quantity,
         current_age_weeks=current_age_weeks,
     )
+
+
+# ---------- Asset Status Update ----------
+
+
+def asset_status_update_to_out(u: models.AssetStatusUpdate) -> schemas.AssetStatusUpdateOut:
+    return schemas.AssetStatusUpdateOut(
+        id=u.id,
+        asset_id=u.asset_id,
+        asset_name=u.asset.asset_name if u.asset else "",
+        update_date=u.update_date,
+        quantity_change=u.quantity_change,
+        reason=u.reason,
+        notes=u.notes,
+        created_at=u.created_at,
+    )
+
+
+def get_asset_status_updates(db: Session, asset_id: int | None = None) -> list[models.AssetStatusUpdate]:
+    stmt = select(models.AssetStatusUpdate)
+    if asset_id is not None:
+        stmt = stmt.where(models.AssetStatusUpdate.asset_id == asset_id)
+    stmt = stmt.order_by(models.AssetStatusUpdate.update_date.desc(), models.AssetStatusUpdate.id.desc())
+    return list(db.scalars(stmt))
+
+
+def get_asset_status_update(db: Session, update_id: int) -> models.AssetStatusUpdate | None:
+    return db.get(models.AssetStatusUpdate, update_id)
+
+
+class AssetStatusError(ValueError):
+    pass
+
+
+def create_asset_status_update(
+    db: Session, payload: schemas.AssetStatusUpdateCreate
+) -> models.AssetStatusUpdate:
+    asset = db.get(models.Asset, payload.asset_id)
+    if asset is None:
+        raise AssetStatusError("Aset tidak ditemukan.")
+    if payload.reason in ("dead", "missing") and asset.asset_type.strip().lower() != "ayam":
+        raise AssetStatusError("Status 'mati'/'hilang' hanya untuk aset ayam.")
+    active = asset_to_out(asset, db).active_quantity
+    if payload.quantity_change > active:
+        raise AssetStatusError(f"Perubahan ({payload.quantity_change}) melebihi jumlah aktif ({active}).")
+    update = models.AssetStatusUpdate(**payload.model_dump())
+    db.add(update)
+    db.commit()
+    db.refresh(update)
+    return update
+
+
+def delete_asset_status_update(db: Session, update: models.AssetStatusUpdate) -> None:
+    db.delete(update)
+    db.commit()
 
 
 def get_assets(db: Session, asset_type: str | None = None, search: str | None = None) -> list[models.Asset]:
@@ -392,6 +534,23 @@ def delete_asset(db: Session, asset: models.Asset) -> None:
 # ---------- Production ----------
 
 
+def production_to_out(production: models.Production) -> schemas.ProductionOut:
+    avg = production.average_egg_weight_kg or DEFAULT_AVERAGE_EGG_WEIGHT_KG
+    quantity_kg = quantize_qty(production.quantity_kg) or 0.0
+    estimated_egg_count = round(quantity_kg / avg) if avg > 0 else 0
+    return schemas.ProductionOut(
+        id=production.id,
+        production_date=production.production_date,
+        chicken_group=production.chicken_group,
+        quantity_kg=quantity_kg,
+        average_egg_weight_kg=avg,
+        estimated_egg_count=estimated_egg_count,
+        notes=production.notes,
+        created_at=production.created_at,
+        updated_at=production.updated_at,
+    )
+
+
 def get_productions(
     db: Session,
     date_from: date | None = None,
@@ -413,8 +572,16 @@ def get_production(db: Session, production_id: int) -> models.Production | None:
     return db.get(models.Production, production_id)
 
 
+def _production_data(db: Session, payload: schemas.ProductionBase) -> dict:
+    data = payload.model_dump()
+    data["quantity_kg"] = quantize_qty(data["quantity_kg"])
+    if data.get("average_egg_weight_kg") is None:
+        data["average_egg_weight_kg"] = get_average_egg_weight_kg(db)
+    return data
+
+
 def create_production(db: Session, payload: schemas.ProductionCreate) -> models.Production:
-    production = models.Production(**payload.model_dump())
+    production = models.Production(**_production_data(db, payload))
     db.add(production)
     db.commit()
     db.refresh(production)
@@ -424,7 +591,7 @@ def create_production(db: Session, payload: schemas.ProductionCreate) -> models.
 def update_production(
     db: Session, production: models.Production, payload: schemas.ProductionUpdate
 ) -> models.Production:
-    for key, value in payload.model_dump().items():
+    for key, value in _production_data(db, payload).items():
         setattr(production, key, value)
     db.commit()
     db.refresh(production)
@@ -444,7 +611,7 @@ def sale_to_out(sale: models.Sale) -> schemas.SaleOut:
         id=sale.id,
         sale_date=sale.sale_date,
         product_type=sale.product_type,
-        quantity=sale.quantity,
+        quantity=quantize_qty(sale.quantity),
         unit=sale.unit,
         unit_price=sale.unit_price,
         total_price=sale.total_price,
@@ -494,6 +661,7 @@ def get_sale(db: Session, sale_id: int) -> models.Sale | None:
 def create_sale(db: Session, payload: schemas.SaleCreate) -> models.Sale:
     total_price = round(payload.quantity * payload.unit_price)
     data = payload.model_dump(exclude={"paid_amount"})
+    data["quantity"] = quantize_qty(data["quantity"])
     sale = models.Sale(
         **data,
         total_price=total_price,
@@ -508,6 +676,7 @@ def create_sale(db: Session, payload: schemas.SaleCreate) -> models.Sale:
 def update_sale(db: Session, sale: models.Sale, payload: schemas.SaleUpdate) -> models.Sale:
     total_price = round(payload.quantity * payload.unit_price)
     data = payload.model_dump(exclude={"paid_amount"})
+    data["quantity"] = quantize_qty(data["quantity"])
     for key, value in data.items():
         setattr(sale, key, value)
     sale.total_price = total_price
@@ -534,19 +703,16 @@ def delete_sale(db: Session, sale: models.Sale) -> None:
 
 
 def transaction_to_out(transaction: models.DailyTransaction) -> schemas.TransactionOut:
-    qty_per_group = None
-    if transaction.category.strip().lower() == "pakan" and transaction.qty is not None:
-        qty_per_group = round(transaction.qty / 2, 2)
     return schemas.TransactionOut(
         id=transaction.id,
         transaction_date=transaction.transaction_date,
         category=transaction.category,
         amount=transaction.amount,
-        qty=transaction.qty,
+        qty=quantize_qty(transaction.qty),
         qty_unit=transaction.qty_unit,
+        unit_price=transaction.unit_price,
         feed_type=transaction.feed_type,
         notes=transaction.notes,
-        qty_per_group=qty_per_group,
         created_at=transaction.created_at,
         updated_at=transaction.updated_at,
     )
@@ -576,8 +742,16 @@ def get_transaction(db: Session, transaction_id: int) -> models.DailyTransaction
     return db.get(models.DailyTransaction, transaction_id)
 
 
+def _transaction_data(payload: schemas.TransactionBase) -> dict:
+    data = payload.model_dump()
+    data["qty"] = quantize_qty(data["qty"])
+    if data["qty"] is not None and payload.unit_price is not None:
+        data["amount"] = round(data["qty"] * payload.unit_price)
+    return data
+
+
 def create_transaction(db: Session, payload: schemas.TransactionCreate) -> models.DailyTransaction:
-    transaction = models.DailyTransaction(**payload.model_dump())
+    transaction = models.DailyTransaction(**_transaction_data(payload))
     db.add(transaction)
     db.commit()
     db.refresh(transaction)
@@ -587,7 +761,7 @@ def create_transaction(db: Session, payload: schemas.TransactionCreate) -> model
 def update_transaction(
     db: Session, transaction: models.DailyTransaction, payload: schemas.TransactionUpdate
 ) -> models.DailyTransaction:
-    for key, value in payload.model_dump().items():
+    for key, value in _transaction_data(payload).items():
         setattr(transaction, key, value)
     db.commit()
     db.refresh(transaction)
@@ -716,6 +890,9 @@ def get_production_summary(
 
     by_group: dict[str, float] = defaultdict(float)
     trend_map: dict[str, float] = defaultdict(float)
+    # weekly histogram (FB-006): ISO (year, week) -> kg, so "Minggu 32" bars
+    # stay in order across a year boundary.
+    weekly_map: dict[tuple[int, int], float] = defaultdict(float)
     total_kg = 0.0
     for p in productions:
         total_kg += p.quantity_kg
@@ -724,15 +901,22 @@ def get_production_summary(
             p.production_date.strftime("%Y-%m") if use_month_buckets else p.production_date.strftime("%Y-%m-%d")
         )
         trend_map[label] += p.quantity_kg
+        iso = p.production_date.isocalendar()
+        weekly_map[(iso[0], iso[1])] += p.quantity_kg
 
     trend = [
         schemas.ProductionTrendPoint(label=label, quantity_kg=round(qty, 3))
         for label, qty in sorted(trend_map.items())
     ]
+    weekly = [
+        schemas.ProductionWeekPoint(week_label=f"Minggu {week}", total_kg=round(qty, 3))
+        for (_year, week), qty in sorted(weekly_map.items())
+    ]
     return schemas.ProductionSummary(
         total_kg=round(total_kg, 3),
         by_group={k: round(v, 3) for k, v in by_group.items()},
         trend=trend,
+        weekly=weekly,
     )
 
 
@@ -792,6 +976,124 @@ def get_stock_position(db: Session) -> schemas.StockPosition:
     )
 
 
+# ---------- FCR / HDP analytics ----------
+
+FEED_CATEGORY = "Pakan"
+
+
+def _months_in_range(date_from: date, end: date):
+    """Yield (year, month, clamped_start, clamped_end) for each calendar month the range touches."""
+    import calendar
+
+    year, month = date_from.year, date_from.month
+    while (year, month) <= (end.year, end.month):
+        last = calendar.monthrange(year, month)[1]
+        month_start, month_end = date(year, month, 1), date(year, month, last)
+        yield year, month, max(month_start, date_from), min(month_end, end)
+        month = month + 1 if month < 12 else 1
+        year = year if month != 1 else year + 1
+
+
+def egg_production_kg(db: Session, date_from: date, date_to: date) -> float:
+    return sum(p.quantity_kg for p in get_productions(db, date_from=date_from, date_to=date_to))
+
+
+def feed_consumption_kg(db: Session, date_from: date, date_to: date) -> float:
+    """Feed transactions converted to kg (FB-017).
+
+    Feed qty is recorded in karung; `kg_per_karung:<feed_type>` (a Setting, 0
+    until an admin fills it) is the conversion factor. A transaction with an
+    unset factor or missing feed_type contributes 0 kg.
+    """
+    stmt = select(models.DailyTransaction).where(
+        models.DailyTransaction.category == FEED_CATEGORY,
+        models.DailyTransaction.transaction_date >= date_from,
+        models.DailyTransaction.transaction_date <= date_to,
+    )
+    factors: dict[str, float] = {}
+    total = 0.0
+    for t in db.scalars(stmt):
+        if not t.qty or not t.feed_type:
+            continue
+        if t.feed_type not in factors:
+            factors[t.feed_type] = get_kg_per_karung(db, t.feed_type)
+        total += t.qty * factors[t.feed_type]
+    return total
+
+
+def active_chicken_count(db: Session, as_of: date) -> int:
+    """ADR 0005: Ayam assets acquired on/before `as_of`, minus dead/sold/missing
+    reductions dated on/before `as_of`."""
+    acquired = db.scalar(
+        select(func.coalesce(func.sum(models.Asset.quantity), 0)).where(
+            models.Asset.asset_type == "Ayam",
+            models.Asset.acquisition_date <= as_of,
+        )
+    )
+    reduced = db.scalar(
+        select(func.coalesce(func.sum(models.AssetStatusUpdate.quantity_change), 0))
+        .join(models.Asset, models.AssetStatusUpdate.asset_id == models.Asset.id)
+        .where(
+            models.Asset.asset_type == "Ayam",
+            models.AssetStatusUpdate.update_date <= as_of,
+        )
+    )
+    return max(int(acquired or 0) - int(reduced or 0), 0)
+
+
+def _estimated_eggs(db: Session, date_from: date, date_to: date) -> float:
+    default_avg = get_average_egg_weight_kg(db)
+    total = 0.0
+    for p in get_productions(db, date_from=date_from, date_to=date_to):
+        avg = p.average_egg_weight_kg or default_avg
+        if avg > 0:
+            total += p.quantity_kg / avg
+    return total
+
+
+def get_fcr_summary(
+    db: Session, period: str, custom_from: date | None, custom_to: date | None
+) -> schemas.FcrSummary:
+    date_from, date_to = _period_range(period, custom_from, custom_to)
+    feed, eggs = feed_consumption_kg(db, date_from, date_to), egg_production_kg(db, date_from, date_to)
+    trend = []
+    for year, month, month_start, month_end in _months_in_range(date_from, date_to):
+        m_eggs = egg_production_kg(db, month_start, month_end)
+        m_feed = feed_consumption_kg(db, month_start, month_end)
+        if m_eggs > 0 and m_feed > 0:
+            trend.append(schemas.MetricPoint(label=f"{year}-{month:02d}", value=round(m_feed / m_eggs, 3)))
+    return schemas.FcrSummary(
+        value=round(feed / eggs, 3) if eggs > 0 and feed > 0 else None,
+        target=get_fcr_target(db),
+        trend=trend,
+    )
+
+
+def get_hdp_summary(
+    db: Session, period: str, custom_from: date | None, custom_to: date | None
+) -> schemas.HdpSummary:
+    date_from, date_to = _period_range(period, custom_from, custom_to)
+    points: list[schemas.MetricPoint] = []
+    if (date_to - date_from).days <= 62:
+        day = date_from
+        while day <= date_to:
+            eggs, hens = _estimated_eggs(db, day, day), active_chicken_count(db, day)
+            if hens > 0 and eggs > 0:
+                points.append(schemas.MetricPoint(label=day.strftime("%Y-%m-%d"), value=round(eggs / hens * 100, 1)))
+            day += timedelta(days=1)
+    else:
+        for year, month, month_start, month_end in _months_in_range(date_from, date_to):
+            eggs = _estimated_eggs(db, month_start, month_end)
+            hens = active_chicken_count(db, month_end)
+            days = (month_end - month_start).days + 1
+            if hens > 0 and eggs > 0:
+                points.append(
+                    schemas.MetricPoint(label=f"{year}-{month:02d}", value=round(eggs / days / hens * 100, 1))
+                )
+    mean = round(sum(p.value for p in points) / len(points), 1) if points else None
+    return schemas.HdpSummary(value=mean, target=get_hdp_target_percentage(db), trend=points)
+
+
 def get_dashboard_overview(
     db: Session, period: str, custom_from: date | None, custom_to: date | None
 ) -> schemas.DashboardOverview:
@@ -808,6 +1110,176 @@ def get_dashboard_overview(
         total_receivable=sum(r.remaining_amount for r in receivables),
         debts_outstanding=debts_outstanding,
         stock=get_stock_position(db),
+        fcr=get_fcr_summary(db, period, custom_from, custom_to),
+        hdp=get_hdp_summary(db, period, custom_from, custom_to),
         expense_total=sum(t.amount for t in period_transactions),
         sales_total=sum(s.total_price for s in period_sales),
+    )
+
+
+# ---------- Performance Financial (FB-019) ----------
+#
+# A best-effort management report from the app's data. Simplifications, all
+# surfaced in the UI's "Asumsi" note:
+#   - COGS = feed + livestock/egg-stock purchases; every other transaction is
+#     operating expense. Asset purchases are capex, not expense.
+#   - depreciation is straight-line, attributed to the months it covers.
+#   - cash flow from operations = net profit + depreciation (no working-capital
+#     timing — sales/expense payment dates are not tracked).
+#   - cash balance is reconstructed from inception: opening cash + capital +
+#     sales + new debt − transactions − asset purchases − debt repayments.
+#   - no interest or tax expense is modelled.
+
+_COGS_CATEGORIES = {"Pakan", "Pembelian Telor", "Pembelian Ayam"}
+_INCEPTION = date(2000, 1, 1)
+
+
+def _sum_transactions(
+    db: Session, date_from: date, date_to: date, only=None, without=None
+) -> int:
+    stmt = select(models.DailyTransaction).where(
+        models.DailyTransaction.transaction_date >= date_from,
+        models.DailyTransaction.transaction_date <= date_to,
+    )
+    total = 0
+    for t in db.scalars(stmt):
+        if only is not None and t.category not in only:
+            continue
+        if without is not None and t.category in without:
+            continue
+        total += t.amount
+    return total
+
+
+def _sales_revenue(db: Session, date_from: date, date_to: date) -> int:
+    return sum(s.total_price for s in get_sales(db, date_from=date_from, date_to=date_to))
+
+
+def _depreciation_expense(db: Session, date_from: date, date_to: date) -> int:
+    """Straight-line depreciation whose calendar month falls inside [date_from, date_to]."""
+    total = 0
+    for a in get_assets(db):
+        if a.depreciation_months <= 0:
+            continue
+        monthly = round(a.quantity * a.acquisition_price / a.depreciation_months)
+        for year, month, _s, _e in _months_in_range(date_from, date_to):
+            # depreciation charged from the month after acquisition, matching the
+            # book value in asset_to_out (months_elapsed = plain month difference)
+            months_since = (year - a.acquisition_date.year) * 12 + (month - a.acquisition_date.month)
+            if 1 <= months_since <= a.depreciation_months:
+                total += monthly
+    return total
+
+
+def _asset_acquisitions(db: Session, date_from: date, date_to: date) -> int:
+    return sum(
+        a.quantity * a.acquisition_price
+        for a in get_assets(db)
+        if date_from <= a.acquisition_date <= date_to
+    )
+
+
+def _new_debt(db: Session, date_from: date, date_to: date) -> int:
+    return sum(d.amount for d in get_debts(db) if date_from <= d.loan_date <= date_to)
+
+
+def get_financial_statement(
+    db: Session, label: str, date_from: date, date_to: date
+) -> schemas.FinancialStatement:
+    investor_capital = get_investor_capital(db)
+    opening_cash = get_opening_bank_cash(db)
+
+    revenue = _sales_revenue(db, date_from, date_to)
+    cogs = _sum_transactions(db, date_from, date_to, only=_COGS_CATEGORIES)
+    gross_profit = revenue - cogs
+    opex = _sum_transactions(db, date_from, date_to, without=_COGS_CATEGORIES)
+    ebitda = gross_profit - opex
+    depreciation = _depreciation_expense(db, date_from, date_to)
+    net_profit = ebitda - depreciation
+
+    cf_operating = net_profit + depreciation
+    cf_investing = -_asset_acquisitions(db, date_from, date_to)
+    cf_financing = _new_debt(db, date_from, date_to)
+    net_cash_change = cf_operating + cf_investing + cf_financing
+
+    # balance sheet as of date_to, from inception
+    all_revenue = _sales_revenue(db, _INCEPTION, date_to)
+    all_cogs = _sum_transactions(db, _INCEPTION, date_to, only=_COGS_CATEGORIES)
+    all_opex = _sum_transactions(db, _INCEPTION, date_to, without=_COGS_CATEGORIES)
+    all_depr = _depreciation_expense(db, _INCEPTION, date_to)
+    retained_earnings = all_revenue - all_cogs - all_opex - all_depr
+
+    sales_to_date = [s for s in get_sales(db) if s.sale_date <= date_to]
+    ar = sum(s.total_price - s.paid_amount for s in sales_to_date)
+    debts_to_date = [d for d in get_debts(db) if d.loan_date <= date_to]
+    ap = sum(d.amount - d.paid_amount for d in debts_to_date)
+
+    assets_to_date = [a for a in get_assets(db) if a.acquisition_date <= date_to]
+    book_values = {a.id: asset_to_out(a, db).book_value for a in assets_to_date}
+    asset_book_value = sum(book_values.values())
+    accumulated_depreciation = sum(
+        a.quantity * a.acquisition_price - book_values[a.id] for a in assets_to_date
+    )
+
+    all_txn = _sum_transactions(db, _INCEPTION, date_to)
+    all_asset_acq = sum(a.quantity * a.acquisition_price for a in assets_to_date)
+    all_debt_repaid = sum(d.paid_amount for d in debts_to_date)
+    cash_collected_from_sales = sum(s.paid_amount for s in sales_to_date)
+    cash_balance = (
+        opening_cash + investor_capital + cash_collected_from_sales + sum(d.amount for d in debts_to_date)
+        - all_txn - all_asset_acq - all_debt_repaid
+    )
+
+    total_assets = cash_balance + ar + asset_book_value
+    total_equity = investor_capital + retained_earnings
+    total_liabilities_equity = ap + total_equity
+    invested_capital = investor_capital + opening_cash
+    roi_pct = round(retained_earnings / invested_capital * 100, 1) if invested_capital else 0.0
+
+    return schemas.FinancialStatement(
+        label=label,
+        period_from=date_from,
+        period_to=date_to,
+        sales_revenue=revenue,
+        cogs=cogs,
+        gross_profit=gross_profit,
+        operating_expenses=opex,
+        ebitda=ebitda,
+        depreciation_expense=depreciation,
+        net_profit=net_profit,
+        cf_operating=cf_operating,
+        cf_investing=cf_investing,
+        cf_financing=cf_financing,
+        net_cash_change=net_cash_change,
+        cash_balance=cash_balance,
+        accounts_receivable=ar,
+        asset_book_value=asset_book_value,
+        total_assets=total_assets,
+        accounts_payable=ap,
+        accumulated_depreciation=accumulated_depreciation,
+        paid_in_capital=investor_capital,
+        retained_earnings=retained_earnings,
+        total_equity=total_equity,
+        total_liabilities_equity=total_liabilities_equity,
+        invested_capital=invested_capital,
+        roi_pct=roi_pct,
+        bank_cash_in=revenue + _new_debt(db, date_from, date_to),
+        bank_cash_out=_sum_transactions(db, date_from, date_to)
+        + _asset_acquisitions(db, date_from, date_to),
+    )
+
+
+def get_financial_report(db: Session) -> schemas.FinancialReport:
+    today = date.today()
+    monthly = [
+        schemas.MetricPoint(
+            label=f"{year}-{month:02d}",
+            value=get_financial_statement(db, f"{year}-{month:02d}", ms, me).net_profit,
+        )
+        for year, month, ms, me in _months_in_range(today.replace(month=1, day=1), today)
+    ]
+    return schemas.FinancialReport(
+        mtd=get_financial_statement(db, "MTD", today.replace(day=1), today),
+        ytd=get_financial_statement(db, "YTD", today.replace(month=1, day=1), today),
+        monthly_net_profit=monthly,
     )

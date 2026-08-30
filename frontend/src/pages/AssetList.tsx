@@ -4,7 +4,7 @@ import { api } from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useAuth } from '../context/AuthContext';
 import type { Asset } from '../types';
-import { formatDate, formatRupiah } from '../utils';
+import { formatBucketLabel, formatDate, formatRupiah } from '../utils';
 
 export function AssetList() {
   const { user } = useAuth();
@@ -46,9 +46,14 @@ export function AssetList() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Aset</h1>
-        <Link to="/aset/new" className="btn btn-primary">
-          + Tambah Aset
-        </Link>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Link to="/aset/status" className="btn btn-secondary">
+            Update Status
+          </Link>
+          <Link to="/aset/new" className="btn btn-primary">
+            + Tambah Aset
+          </Link>
+        </div>
       </div>
 
       <div className="filter-bar">
@@ -82,15 +87,22 @@ export function AssetList() {
                   <div>
                     <div className="card-title">{a.asset_name}</div>
                     <div className="card-subtitle">
-                      {a.asset_type} · {formatDate(a.acquisition_date)}
+                      {a.asset_type} · {a.quantity} unit · {formatDate(a.acquisition_date)}
                     </div>
                   </div>
                   <span className="badge badge-active">{formatRupiah(a.book_value)}</span>
                 </div>
                 <div className="card-row" style={{ marginTop: 8 }}>
-                  <span className="card-subtitle">Harga akuisisi: {formatRupiah(a.acquisition_price)}</span>
+                  <span className="card-subtitle">Total akuisisi: {formatRupiah(a.total_acquisition_value)}</span>
                   <span className="card-subtitle">Depresiasi/bln: {formatRupiah(a.monthly_depreciation)}</span>
                 </div>
+                {a.book_value_zero_date && (
+                  <div className="card-row" style={{ marginTop: 4 }}>
+                    <span className="card-subtitle">
+                      Nilai buku Rp 0 sekitar: {formatBucketLabel(a.book_value_zero_date.slice(0, 7))}
+                    </span>
+                  </div>
+                )}
                 {a.current_age_weeks !== null && (
                   <div className="card-row" style={{ marginTop: 4 }}>
                     <span className="card-subtitle">
@@ -117,10 +129,12 @@ export function AssetList() {
             <tr>
               <th>Aset</th>
               <th>Jenis</th>
+              <th className="num">Qty</th>
               <th>Tgl Akuisisi</th>
-              <th className="num">Harga Akuisisi</th>
+              <th className="num">Total Akuisisi</th>
               <th className="num">Depresiasi/bln</th>
               <th className="num">Nilai Buku</th>
+              <th>Nilai Buku Rp 0</th>
               <th>Kelompok/Umur</th>
               <th></th>
             </tr>
@@ -130,10 +144,12 @@ export function AssetList() {
               <tr key={a.id}>
                 <td>{a.asset_name}</td>
                 <td>{a.asset_type}</td>
+                <td className="num">{a.quantity}</td>
                 <td>{formatDate(a.acquisition_date)}</td>
-                <td className="num">{formatRupiah(a.acquisition_price)}</td>
+                <td className="num">{formatRupiah(a.total_acquisition_value)}</td>
                 <td className="num">{formatRupiah(a.monthly_depreciation)}</td>
                 <td className="num">{formatRupiah(a.book_value)}</td>
+                <td>{a.book_value_zero_date ? formatBucketLabel(a.book_value_zero_date.slice(0, 7)) : '-'}</td>
                 <td>
                   {a.chicken_group ? `${a.chicken_group} · ${a.current_age_weeks} mgg` : '-'}
                 </td>
