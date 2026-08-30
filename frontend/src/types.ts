@@ -153,10 +153,16 @@ export interface ProductionTrendPoint {
   quantity_kg: number;
 }
 
+export interface ProductionWeekPoint {
+  week_label: string;
+  total_kg: number;
+}
+
 export interface ProductionSummary {
   total_kg: number;
   by_group: Record<string, number>;
   trend: ProductionTrendPoint[];
+  weekly: ProductionWeekPoint[];
 }
 
 export interface WeeklyTransactionRow {

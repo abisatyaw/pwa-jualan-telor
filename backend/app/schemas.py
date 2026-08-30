@@ -262,10 +262,16 @@ class ProductionTrendPoint(BaseModel):
     quantity_kg: float
 
 
+class ProductionWeekPoint(BaseModel):
+    week_label: str
+    total_kg: float
+
+
 class ProductionSummary(BaseModel):
     total_kg: float
     by_group: dict[str, float]
     trend: list[ProductionTrendPoint]
+    weekly: list[ProductionWeekPoint]
 
 
 class WeeklyTransactionRow(BaseModel):

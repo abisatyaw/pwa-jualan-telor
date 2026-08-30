@@ -1,5 +1,15 @@
 import { useEffect, useState } from 'react';
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { api } from '../api/client';
 import { KpiCard } from '../components/KpiCard';
 import { PaymentDialog } from '../components/PaymentDialog';
@@ -140,6 +150,21 @@ export function Dashboard() {
                     isAnimationActive={false}
                   />
                 </LineChart>
+              </ResponsiveContainer>
+            )}
+
+            <h3 style={{ marginTop: 16 }}>Produksi per Minggu</h3>
+            {data.production.weekly.length === 0 ? (
+              <div className="empty-state">Belum ada data produksi.</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={data.production.weekly}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="week_label" tick={{ fontSize: 12 }} />
+                  <YAxis tickFormatter={shortKg} tick={{ fontSize: 12 }} width={50} />
+                  <Tooltip formatter={(v) => `${formatQty(Number(v))} Kg`} />
+                  <Bar dataKey="total_kg" fill="#b45309" isAnimationActive={false} />
+                </BarChart>
               </ResponsiveContainer>
             )}
           </div>

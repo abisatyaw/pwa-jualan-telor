@@ -768,6 +768,9 @@ def get_production_summary(
 
     by_group: dict[str, float] = defaultdict(float)
     trend_map: dict[str, float] = defaultdict(float)
+    # weekly histogram (FB-006): ISO (year, week) -> kg, so "Minggu 32" bars
+    # stay in order across a year boundary.
+    weekly_map: dict[tuple[int, int], float] = defaultdict(float)
     total_kg = 0.0
     for p in productions:
         total_kg += p.quantity_kg
@@ -776,15 +779,22 @@ def get_production_summary(
             p.production_date.strftime("%Y-%m") if use_month_buckets else p.production_date.strftime("%Y-%m-%d")
         )
         trend_map[label] += p.quantity_kg
+        iso = p.production_date.isocalendar()
+        weekly_map[(iso[0], iso[1])] += p.quantity_kg
 
     trend = [
         schemas.ProductionTrendPoint(label=label, quantity_kg=round(qty, 3))
         for label, qty in sorted(trend_map.items())
     ]
+    weekly = [
+        schemas.ProductionWeekPoint(week_label=f"Minggu {week}", total_kg=round(qty, 3))
+        for (_year, week), qty in sorted(weekly_map.items())
+    ]
     return schemas.ProductionSummary(
         total_kg=round(total_kg, 3),
         by_group={k: round(v, 3) for k, v in by_group.items()},
         trend=trend,
+        weekly=weekly,
     )
 
 
