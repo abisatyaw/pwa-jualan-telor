@@ -9,8 +9,11 @@ legacy paths (`/hutang`, `/aset/status`) stay as redirects so old links and the 
 This is also why "tab" now has one fixed meaning (see CONTEXT.md) — FB-018 and FB-019 had each
 built a "tab" differently (a button vs. a whole route).
 
+The Dashboard's switcher started as four tabs; the "Keuangan" tab was merged back into "Ringkasan"
+because the weekly-transactions and receivables sections *are* part of the at-a-glance overview.
+
 Navigation is deliberately **identical for admin and user roles**; the only role difference in the
 app is that admins can delete records. We are not building a role-tailored menu.
 
-The whole change ships as the `feat/ui-v2` branch with a stack of small PRs beneath it and touches
-frontend only, so it can be reverted wholesale or piece by piece if users dislike it.
+The whole change ships as the `feat/ui-v2` branch (one PR, six commits) and touches frontend only,
+so it can be reverted wholesale or commit by commit if users dislike it.

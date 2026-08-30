@@ -92,7 +92,8 @@ Refined with the owner into a navigation + information-architecture change. One 
    Dashboard quick-action row.
 3. `feat/ui-v2-keuangan-tabs` — Hutang folds into Keuangan (Laporan/Hutang tabs); `/hutang`
    redirects.
-4. `feat/ui-v2-dashboard-tabs` — Dashboard split into Ringkasan/Produksi/Keuangan/Stok tabs.
+4. `feat/ui-v2-dashboard-tabs` — Dashboard split into Ringkasan / Produksi / Stok tabs (Ringkasan =
+   KPI cards + weekly transactions + receivables; a separate Keuangan tab was merged back in).
 5. `feat/ui-v2-settings-subgroups` — "Parameter Perhitungan" split into Konversi Satuan / Target
    Produksi / Keuangan.
 6. `feat/ui-v2-docs` — CONTEXT.md (Hutang, Navigation destination, Tab), CLAUDE.md hutang fix,

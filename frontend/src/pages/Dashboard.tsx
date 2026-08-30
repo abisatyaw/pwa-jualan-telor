@@ -22,7 +22,6 @@ import { formatBucketLabel, formatDate, formatDateTime, formatQty, formatRupiah,
 const DASH_TABS: TabDef[] = [
   { key: 'ringkasan', label: 'Ringkasan' },
   { key: 'produksi', label: 'Produksi' },
-  { key: 'keuangan', label: 'Keuangan' },
   { key: 'stok', label: 'Stok' },
 ];
 
@@ -244,7 +243,7 @@ export function Dashboard() {
           </>
           )}
 
-          {tab === 'keuangan' && (
+          {tab === 'ringkasan' && (
           <>
           {/* 2. Transaksi mingguan */}
           <div className="chart-section">
