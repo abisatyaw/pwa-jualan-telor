@@ -12,12 +12,14 @@ UserRole = Literal["admin", "user"]
 
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1)
-    password: str = Field(min_length=1)
+    password: str = ""
 
 
 class UserCreate(BaseModel):
-    username: str = Field(min_length=3)
-    password: str = Field(min_length=8)
+    username: str = Field(min_length=1)
+    # Password complexity is intentionally not enforced yet (see feedback AUTH-004):
+    # admin-created accounts may have an empty password until a real policy is set.
+    password: str = ""
     role: UserRole = "user"
 
 

@@ -211,7 +211,7 @@ function UserManagement() {
           />
           <input
             className="form-control"
-            placeholder="Password"
+            placeholder="Password (opsional)"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

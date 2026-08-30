@@ -18,6 +18,22 @@ import type {
 
 const API_BASE = import.meta.env.DEV ? `http://${window.location.hostname}:8001/api` : '/api';
 
+// FastAPI returns `detail` as a plain string for HTTPException, but as an array of
+// {loc, msg, type} objects for 422 validation errors. Flatten both to a readable
+// string so callers never surface "[object Object]".
+function extractErrorMessage(body: unknown): string | null {
+  if (!body || typeof body !== 'object') return null;
+  const detail = (body as { detail?: unknown }).detail;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    const parts = detail
+      .map((e) => (e && typeof e === 'object' && 'msg' in e ? String((e as { msg: unknown }).msg) : null))
+      .filter(Boolean);
+    if (parts.length) return parts.join('; ');
+  }
+  return null;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -26,7 +42,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.detail ?? `Request failed: ${res.status}`);
+    throw new Error(extractErrorMessage(body) ?? `Request failed: ${res.status}`);
   }
   if (res.status === 204) return undefined as T;
   return res.json();
