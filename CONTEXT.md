@@ -71,3 +71,25 @@ Daily egg-laying rate as a percentage for a specific date: `estimated_egg_count 
 * 100`. The historical HDP trend uses each date's reconstructed Active Chicken Count, not today's
 current count.
 _Avoid_: Lay rate
+
+**Hutang (Debt)**:
+Money the business has borrowed, typically from an investor — the `debts` table's `lender_name` /
+`interest_rate` / `loan_date` / `due_date`. A payable. Distinct from a customer buying on credit,
+which is tracked on the Sale itself (`paid_amount` / `remaining_amount`) and surfaced as "Piutang
+Pelanggan" on the dashboard.
+_Avoid_: Receivable, piutang, customer debt
+
+## UI shell
+
+**Navigation destination**:
+A top-level entry in the main navigation (bottom bar on mobile, top bar on desktop). There are six
+— Dashboard, Transaksi, Produksi, Penjualan, Aset, Keuangan — plus a Settings gear in the header.
+Navigation is identical for every role.
+_Avoid_: Tab, menu item, page
+
+**Tab**:
+An in-page switcher between sub-views of a single Navigation destination (e.g. Keuangan's "Laporan
+Keuangan" / "Hutang", Aset's "Daftar Aset" / "Update Status", the Dashboard's four sections).
+Client-side state held in a `?tab=` query param via the shared `PageTabs` component — never a
+separate route.
+_Avoid_: Page, section, sub-route

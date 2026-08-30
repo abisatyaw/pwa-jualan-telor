@@ -6,7 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 "Telur Tracker" — a PWA for tracking an egg-farming/selling business (assets, production, sales, daily
 transactions/expenses, debts, dashboard). Indonesian-language UI and domain terms throughout the code
-(e.g. `hutang` = debt/receivable, `lunas` = paid off, `kandang` = coop). Backend is FastAPI + SQLAlchemy
+(e.g. `hutang` = a loan the business has taken (a payable, often from an investor) — *not* customer
+credit, which lives on the Sale; `lunas` = paid off, `kandang` = coop). Backend is FastAPI + SQLAlchemy
 (SQLite by default), frontend is React 19 + TypeScript + Vite, served as one deployed app (FastAPI serves
 the built frontend as static files in production).
 
@@ -138,11 +139,14 @@ the general `update_*`/PUT endpoint — this keeps balance-adjustment semantics 
 total/`amount`, status flips to `lunas`) out of the general edit path. Follow this split for any future
 partial-payment-style field.
 
-**Frontend routing (`App.tsx`)** mirrors the backend resources 1:1: each domain has a `List` page and a
-combined `Form` page used for both create (`/x/new`) and edit (`/x/:id`). `api/client.ts` is the single
-place HTTP calls are made — `API_BASE` points at `http://<host>:8001/api` in dev and `/api` in production
-(same-origin, since FastAPI serves the built frontend). Add new endpoints there rather than calling
-`fetch` directly from components.
+**Frontend routing (`App.tsx`)** roughly mirrors the backend resources: each domain has a `List` page
+and a combined `Form` page used for both create (`/x/new`) and edit (`/x/:id`). The main nav is 6
+destinations, not one per resource — Hutang and asset-status live as **in-page tabs** (`?tab=`, via
+the shared `PageTabs` component) inside Keuangan and Aset, and their old top-level paths (`/hutang`,
+`/aset/status`) now redirect. "Tab" always means such an in-page switcher, never a route (see
+`docs/adr/0006`). `api/client.ts` is the single place HTTP calls are made — `API_BASE` points at
+`http://<host>:8001/api` in dev and `/api` in production (same-origin, since FastAPI serves the built
+frontend). Add new endpoints there rather than calling `fetch` directly from components.
 
 **Production deploy topology.** This app and a separate "catering-tracker" app share one VPS via
 `deploy.sh`, which derives environment (production/testing) and port from the directory path

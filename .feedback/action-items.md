@@ -50,7 +50,7 @@ needed, so AUTH-003 needs no work.
 | FB-017 | Feed in karung + conversion | New | `[»]` #18 (factor via Setting, 0 until set) |
 | FB-018 | "Update Status Aset" tab | New | `[»]` #20 |
 | FB-019 | "Performance Financial" tab | New | `[»]` #21 (assumptions listed on the page) |
-| FB-020 | Streamline UI; categorise Settings | **Need Refinement** (Critical) | `[»]` #16 (Settings part only) |
+| FB-020 | Streamline UI; categorise Settings | Refined (Critical) | `[»]` `feat/ui-v2` stack (Settings groups were #16) |
 
 ---
 
@@ -69,7 +69,8 @@ needed, so AUTH-003 needs no work.
    `active_chicken_count(as_of_date)` per ADR 0005, FCR, HDP. Dashboard payload gains FCR + HDP
    trend series; two trend charts with target lines (FCR from `get_fcr_target()`, hidden when
    unset; HDP target from `get_hdp_target_percentage()`). FB-008/009.
-5. **`feat/ui-streamline`** (#16) — Settings page split into labelled, collapsible category groups. FB-020.
+5. **`feat/ui-streamline`** (#16) — Settings page split into labelled, collapsible category groups.
+   FB-020 (first pass; the rest is the `feat/ui-v2` stack in §3a).
 6. **`feat/feed-karung`** (#18) — feed qty in karung; `feed_consumption_kg` converts via
    `kg_per_karung:<feed_type>` (0 until an admin sets it). FB-017.
 7. **`feat/asset-zero-date`** (#19) — `AssetOut.book_value_zero_date`; full-month depreciation
@@ -80,9 +81,27 @@ needed, so AUTH-003 needs no work.
    balance sheet, bank rec, EBITDA, ROI, MTD/YTD); investor-capital & opening-cash Settings.
    FB-019 — best-effort, assumptions listed on the page.
 
-Not in the stack: **FB-020's** broader UI streamline (only the Settings categorisation is done —
-FB-020 is still Need Refinement). Open questions Q-001/Q-002 (kg per karung) and Q-004 (depreciation
-method / zero-date target) are worked around, not answered — the owner should confirm.
+## 3a. `feat/ui-v2` stack — FB-020 UI streamline (frontend only, base `dev`)
+
+Refined with the owner into a navigation + information-architecture change. One overarching branch
+`feat/ui-v2`; linear child stack:
+
+1. `feat/ui-v2-nav` — main nav → 6 destinations (Dashboard, Transaksi, Produksi, Penjualan, Aset,
+   Keuangan); Setting → header gear; shared `PageTabs` component.
+2. `feat/ui-v2-aset-tabs` — Aset gets Daftar/Update-Status tabs; `/aset/status` redirects;
+   Dashboard quick-action row.
+3. `feat/ui-v2-keuangan-tabs` — Hutang folds into Keuangan (Laporan/Hutang tabs); `/hutang`
+   redirects.
+4. `feat/ui-v2-dashboard-tabs` — Dashboard split into Ringkasan/Produksi/Keuangan/Stok tabs.
+5. `feat/ui-v2-settings-subgroups` — "Parameter Perhitungan" split into Konversi Satuan / Target
+   Produksi / Keuangan.
+6. `feat/ui-v2-docs` — CONTEXT.md (Hutang, Navigation destination, Tab), CLAUDE.md hutang fix,
+   ADR 0006, this file.
+
+"Tab" now means an in-page `?tab=` switcher, never a route (ADR 0006). No backend changes.
+
+Open questions Q-001/Q-002 (kg per karung) and Q-004 (depreciation method / zero-date target) are
+worked around, not answered — the owner should confirm.
 
 ---
 
