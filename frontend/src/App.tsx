@@ -20,13 +20,11 @@ import { useAuth } from './context/AuthContext';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', end: true },
-  { to: '/aset', label: 'Aset' },
+  { to: '/transaksi', label: 'Transaksi' },
   { to: '/produksi', label: 'Produksi' },
   { to: '/penjualan', label: 'Penjualan' },
-  { to: '/transaksi', label: 'Transaksi' },
-  { to: '/hutang', label: 'Hutang' },
+  { to: '/aset', label: 'Aset' },
   { to: '/keuangan', label: 'Keuangan' },
-  { to: '/setting', label: 'Setting' },
 ];
 
 function App() {
@@ -61,6 +59,14 @@ function App() {
             <span className="hint-text">
               {user.username} · {user.role === 'admin' ? 'Admin' : 'User'}
             </span>
+            <NavLink
+              to="/setting"
+              className={({ isActive }) => `btn-icon${isActive ? ' btn-icon-active' : ''}`}
+              aria-label="Setting"
+              title="Setting"
+            >
+              ⚙️
+            </NavLink>
             <button className="btn btn-secondary" onClick={logout}>
               Keluar
             </button>

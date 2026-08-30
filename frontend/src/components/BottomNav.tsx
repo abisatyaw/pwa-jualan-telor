@@ -2,13 +2,11 @@ import { NavLink } from 'react-router-dom';
 
 const ITEMS = [
   { to: '/', label: 'Dashboard', icon: '🏠', end: true },
-  { to: '/aset', label: 'Aset', icon: '🏗️' },
+  { to: '/transaksi', label: 'Transaksi', icon: '📒' },
   { to: '/produksi', label: 'Produksi', icon: '🥚' },
   { to: '/penjualan', label: 'Jual', icon: '💰' },
-  { to: '/transaksi', label: 'Transaksi', icon: '📒' },
-  { to: '/hutang', label: 'Hutang', icon: '🏦' },
+  { to: '/aset', label: 'Aset', icon: '🏗️' },
   { to: '/keuangan', label: 'Keuangan', icon: '📊' },
-  { to: '/setting', label: 'Setting', icon: '⚙️' },
 ];
 
 export function BottomNav() {
