@@ -346,6 +346,14 @@ def asset_to_out(asset: models.Asset) -> schemas.AssetOut:
     months_elapsed = _months_between(asset.acquisition_date, today)
     accumulated = min(total_acquisition_value, monthly_depreciation * months_elapsed)
     book_value = total_acquisition_value - accumulated
+    # FB-012 / ADR 0004: recompute the zero-book-value month from the CURRENT
+    # book value, so a partial-disposal write-off moves the date rather than
+    # leaving it fixed at acquisition + depreciation_months.
+    book_value_zero_date = None
+    if monthly_depreciation > 0 and book_value > 0:
+        months_left = -(-book_value // monthly_depreciation)  # ceil division
+        total_month = today.month - 1 + months_left
+        book_value_zero_date = date(today.year + total_month // 12, total_month % 12 + 1, 1)
     current_age_weeks = None
     if asset.chicken_age_weeks_at_purchase is not None:
         weeks_elapsed = max((today - asset.acquisition_date).days // 7, 0)
@@ -366,6 +374,7 @@ def asset_to_out(asset: models.Asset) -> schemas.AssetOut:
         total_acquisition_value=total_acquisition_value,
         monthly_depreciation=monthly_depreciation,
         book_value=book_value,
+        book_value_zero_date=book_value_zero_date,
         current_age_weeks=current_age_weeks,
     )
 

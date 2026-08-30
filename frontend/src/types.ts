@@ -47,6 +47,7 @@ export interface Asset extends AssetInput {
   total_acquisition_value: number;
   monthly_depreciation: number;
   book_value: number;
+  book_value_zero_date: string | null;
   current_age_weeks: number | null;
 }
 

@@ -117,6 +117,7 @@ class AssetOut(AssetBase):
     total_acquisition_value: int
     monthly_depreciation: int
     book_value: int
+    book_value_zero_date: date | None = None
     current_age_weeks: int | None = None
 
 

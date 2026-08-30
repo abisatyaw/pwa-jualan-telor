@@ -4,7 +4,7 @@ import { api } from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useAuth } from '../context/AuthContext';
 import type { Asset } from '../types';
-import { formatDate, formatRupiah } from '../utils';
+import { formatBucketLabel, formatDate, formatRupiah } from '../utils';
 
 export function AssetList() {
   const { user } = useAuth();
@@ -91,6 +91,13 @@ export function AssetList() {
                   <span className="card-subtitle">Total akuisisi: {formatRupiah(a.total_acquisition_value)}</span>
                   <span className="card-subtitle">Depresiasi/bln: {formatRupiah(a.monthly_depreciation)}</span>
                 </div>
+                {a.book_value_zero_date && (
+                  <div className="card-row" style={{ marginTop: 4 }}>
+                    <span className="card-subtitle">
+                      Nilai buku Rp 0 sekitar: {formatBucketLabel(a.book_value_zero_date.slice(0, 7))}
+                    </span>
+                  </div>
+                )}
                 {a.current_age_weeks !== null && (
                   <div className="card-row" style={{ marginTop: 4 }}>
                     <span className="card-subtitle">
@@ -122,6 +129,7 @@ export function AssetList() {
               <th className="num">Total Akuisisi</th>
               <th className="num">Depresiasi/bln</th>
               <th className="num">Nilai Buku</th>
+              <th>Nilai Buku Rp 0</th>
               <th>Kelompok/Umur</th>
               <th></th>
             </tr>
@@ -136,6 +144,7 @@ export function AssetList() {
                 <td className="num">{formatRupiah(a.total_acquisition_value)}</td>
                 <td className="num">{formatRupiah(a.monthly_depreciation)}</td>
                 <td className="num">{formatRupiah(a.book_value)}</td>
+                <td>{a.book_value_zero_date ? formatBucketLabel(a.book_value_zero_date.slice(0, 7)) : '-'}</td>
                 <td>
                   {a.chicken_group ? `${a.chicken_group} · ${a.current_age_weeks} mgg` : '-'}
                 </td>
