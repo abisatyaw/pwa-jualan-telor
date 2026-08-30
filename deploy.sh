@@ -29,6 +29,21 @@ fail() { echo "[deploy] FATAL: $*" >&2; exit 1; }
 [ -f "$APP_DIR/.env" ] || fail ".env missing in $APP_DIR"
 [ -d "$APP_DIR/.venv" ] || fail ".venv missing in $APP_DIR"
 
+# The systemd unit gets DATABASE_URL via EnvironmentFile=.env; the migration step
+# below runs outside systemd, so pull the same value in here. Without it, alembic
+# falls back to the default sqlite path (backend/app.db) and migrates the wrong
+# database while the running service keeps using the real one.
+# Parsed narrowly (not `source`d): .env is a systemd env-file, not a shell script.
+DB_URL="$(sed -n 's/^[[:space:]]*DATABASE_URL=//p' "$APP_DIR/.env" | tail -n1)"
+DB_URL="${DB_URL%\"}"; DB_URL="${DB_URL#\"}"
+DB_URL="${DB_URL%\'}"; DB_URL="${DB_URL#\'}"
+if [ -n "$DB_URL" ]; then
+  export DATABASE_URL="$DB_URL"
+  log "database: $DATABASE_URL (from .env)"
+else
+  log "database: no DATABASE_URL in .env, using app default (backend/app.db)"
+fi
+
 CURRENT_BRANCH="$(git -C "$APP_DIR" rev-parse --abbrev-ref HEAD)"
 [ "$CURRENT_BRANCH" = "$EXPECTED_BRANCH" ] || fail "branch '$CURRENT_BRANCH' does not match expected '$EXPECTED_BRANCH' for $ENVIRONMENT"
 
