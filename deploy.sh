@@ -20,7 +20,7 @@ case "$APP_NAME:$ENVIRONMENT" in
   *) echo "FATAL: no port/service allocation for $APP_NAME ($ENVIRONMENT)" >&2; exit 1 ;;
 esac
 
-EXPECTED_BRANCH="$([ "$ENVIRONMENT" = "production" ] && echo main || echo develop)"
+EXPECTED_BRANCH="$([ "$ENVIRONMENT" = "production" ] && echo main || echo dev)"
 
 log() { echo "[deploy] $*"; }
 fail() { echo "[deploy] FATAL: $*" >&2; exit 1; }
