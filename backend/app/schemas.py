@@ -39,6 +39,35 @@ class KotakConversion(BaseModel):
     value: float = Field(gt=0)
 
 
+class AverageEggWeight(BaseModel):
+    # kg per egg; used as a divisor for estimated egg count, so must be > 0
+    value: float = Field(gt=0)
+
+
+class HdpTarget(BaseModel):
+    # target Hen Day Production as a percentage
+    value: float = Field(ge=0, le=100)
+
+
+class FcrTarget(BaseModel):
+    value: float = Field(gt=0)
+
+
+class FcrTargetOut(BaseModel):
+    # value is None until the business confirms a real target (see crud.get_fcr_target)
+    value: float | None = None
+
+
+class KgPerKarungRow(BaseModel):
+    feed_type: str
+    value: float
+
+
+class KgPerKarungUpdate(BaseModel):
+    feed_type: str = Field(min_length=1)
+    value: float = Field(ge=0)
+
+
 # ---------- Dropdown Options ----------
 
 

@@ -268,6 +268,11 @@ def set_kg_per_karung(db: Session, feed_type: str, value: float) -> float:
     return value
 
 
+def get_all_kg_per_karung(db: Session) -> list[tuple[str, float]]:
+    """kg-per-karung for every current feed_type option (0.0 when unset)."""
+    return [(o.value, get_kg_per_karung(db, o.value)) for o in get_options(db, "feed_type")]
+
+
 def get_average_egg_weight_kg(db: Session) -> float:
     setting = db.get(models.Setting, AVERAGE_EGG_WEIGHT_KG_SETTING_KEY)
     return float(setting.value) if setting else DEFAULT_AVERAGE_EGG_WEIGHT_KG
