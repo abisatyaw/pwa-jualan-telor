@@ -4,6 +4,11 @@ export interface DropdownOption {
   value: string;
 }
 
+export interface KgPerKarungRow {
+  feed_type: string;
+  value: number;
+}
+
 // ---------- Auth / Users ----------
 
 export type UserRole = 'admin' | 'user';
