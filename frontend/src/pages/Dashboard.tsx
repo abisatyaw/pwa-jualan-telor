@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Bar,
   BarChart,
@@ -13,9 +14,16 @@ import {
 } from 'recharts';
 import { api } from '../api/client';
 import { KpiCard } from '../components/KpiCard';
+import { PageTabs, usePageTab, type TabDef } from '../components/PageTabs';
 import { PaymentDialog } from '../components/PaymentDialog';
 import type { DashboardOverview, EggPrice, Period, ReceivableRow } from '../types';
 import { formatBucketLabel, formatDate, formatDateTime, formatQty, formatRupiah, todayIso } from '../utils';
+
+const DASH_TABS: TabDef[] = [
+  { key: 'ringkasan', label: 'Ringkasan' },
+  { key: 'produksi', label: 'Produksi' },
+  { key: 'stok', label: 'Stok' },
+];
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'today', label: 'Hari Ini' },
@@ -30,6 +38,7 @@ function shortKg(v: number): string {
 }
 
 export function Dashboard() {
+  const [tab, setTab] = usePageTab(DASH_TABS);
   const [period, setPeriod] = useState<Period>('month');
   const [from, setFrom] = useState(todayIso());
   const [to, setTo] = useState(todayIso());
@@ -87,6 +96,13 @@ export function Dashboard() {
         <h1 className="page-title">Dashboard</h1>
       </div>
 
+      <div className="quick-actions">
+        <Link to="/transaksi/new" className="btn btn-secondary">+ Transaksi</Link>
+        <Link to="/produksi/new" className="btn btn-secondary">+ Produksi</Link>
+        <Link to="/penjualan/new" className="btn btn-secondary">+ Penjualan</Link>
+        <Link to="/aset/status/new" className="btn btn-secondary">+ Update Status</Link>
+      </div>
+
       <div className="filter-bar">
         <select className="form-control" value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
           {PERIODS.map((p) => (
@@ -103,20 +119,26 @@ export function Dashboard() {
         )}
       </div>
 
+      <PageTabs tabs={DASH_TABS} active={tab} onChange={setTab} />
+
       {error && <p className="error-text">{error}</p>}
       {loading || !data ? (
         <p>Memuat...</p>
       ) : (
         <>
-          <div className="kpi-grid">
-            <KpiCard label="Total Penjualan" value={formatRupiah(data.sales_total)} accent />
-            <KpiCard label="Total Biaya" value={formatRupiah(data.expense_total)} />
-            <KpiCard label="Estimasi Margin" value={formatRupiah(data.sales_total - data.expense_total)} />
-            <KpiCard label="Total Produksi" value={`${formatQty(data.production.total_kg)} Kg`} />
-            <KpiCard label="Piutang Pelanggan" value={formatRupiah(data.total_receivable)} />
-            <KpiCard label="Saldo Hutang" value={formatRupiah(data.debts_outstanding)} />
-          </div>
+          {tab === 'ringkasan' && (
+            <div className="kpi-grid">
+              <KpiCard label="Total Penjualan" value={formatRupiah(data.sales_total)} accent />
+              <KpiCard label="Total Biaya" value={formatRupiah(data.expense_total)} />
+              <KpiCard label="Estimasi Margin" value={formatRupiah(data.sales_total - data.expense_total)} />
+              <KpiCard label="Total Produksi" value={`${formatQty(data.production.total_kg)} Kg`} />
+              <KpiCard label="Piutang Pelanggan" value={formatRupiah(data.total_receivable)} />
+              <KpiCard label="Saldo Hutang" value={formatRupiah(data.debts_outstanding)} />
+            </div>
+          )}
 
+          {tab === 'produksi' && (
+          <>
           {/* 1. Produksi telur */}
           <div className="chart-section">
             <h2>Produksi Telur</h2>
@@ -218,7 +240,11 @@ export function Dashboard() {
               </ResponsiveContainer>
             )}
           </div>
+          </>
+          )}
 
+          {tab === 'ringkasan' && (
+          <>
           {/* 2. Transaksi mingguan */}
           <div className="chart-section">
             <h2>Transaksi Mingguan (8 Minggu Terakhir)</h2>
@@ -271,7 +297,11 @@ export function Dashboard() {
               ))
             )}
           </div>
+          </>
+          )}
 
+          {tab === 'stok' && (
+          <>
           {/* 4 & 5. Stock & harga referensi */}
           <div className="chart-section">
             <h2>Posisi Stock Telur Hari Ini</h2>
@@ -298,6 +328,8 @@ export function Dashboard() {
               Sumber pihak ketiga bisa berubah struktur halaman sewaktu-waktu sehingga pengambilan otomatis bisa gagal — jika begitu, buka sumber secara manual.
             </p>
           </div>
+          </>
+          )}
         </>
       )}
 

@@ -45,7 +45,11 @@ function Section({
   );
 }
 
-export function Financial() {
+/**
+ * Body of the "Laporan Keuangan" sub-view (formerly the "Performance Financial" page).
+ * Rendered inside the Keuangan destination's tab (see Keuangan); no page header of its own.
+ */
+export function FinancialPanel() {
   const [report, setReport] = useState<FinancialReport | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,10 +67,6 @@ export function Financial() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1 className="page-title">Performance Financial</h1>
-      </div>
-
       <p className="hint-text">
         MTD: {formatDate(mtd.period_from)} – {formatDate(mtd.period_to)} · YTD:{' '}
         {formatDate(ytd.period_from)} – {formatDate(ytd.period_to)}. Laporan manajemen berbasis akrual;

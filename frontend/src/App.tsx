@@ -1,9 +1,8 @@
-import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { BottomNav } from './components/BottomNav';
 import { Dashboard } from './pages/Dashboard';
 import { AssetList } from './pages/AssetList';
 import { AssetForm } from './pages/AssetForm';
-import { AssetStatusList } from './pages/AssetStatusList';
 import { AssetStatusForm } from './pages/AssetStatusForm';
 import { ProductionList } from './pages/ProductionList';
 import { ProductionForm } from './pages/ProductionForm';
@@ -11,22 +10,19 @@ import { SaleList } from './pages/SaleList';
 import { SaleForm } from './pages/SaleForm';
 import { TransactionList } from './pages/TransactionList';
 import { TransactionForm } from './pages/TransactionForm';
-import { DebtList } from './pages/DebtList';
 import { DebtForm } from './pages/DebtForm';
 import { Settings } from './pages/Settings';
-import { Financial } from './pages/Financial';
+import { Keuangan } from './pages/Keuangan';
 import { Login } from './pages/Login';
 import { useAuth } from './context/AuthContext';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', end: true },
-  { to: '/aset', label: 'Aset' },
+  { to: '/transaksi', label: 'Transaksi' },
   { to: '/produksi', label: 'Produksi' },
   { to: '/penjualan', label: 'Penjualan' },
-  { to: '/transaksi', label: 'Transaksi' },
-  { to: '/hutang', label: 'Hutang' },
+  { to: '/aset', label: 'Aset' },
   { to: '/keuangan', label: 'Keuangan' },
-  { to: '/setting', label: 'Setting' },
 ];
 
 function App() {
@@ -61,6 +57,14 @@ function App() {
             <span className="hint-text">
               {user.username} · {user.role === 'admin' ? 'Admin' : 'User'}
             </span>
+            <NavLink
+              to="/setting"
+              className={({ isActive }) => `btn-icon${isActive ? ' btn-icon-active' : ''}`}
+              aria-label="Setting"
+              title="Setting"
+            >
+              ⚙️
+            </NavLink>
             <button className="btn btn-secondary" onClick={logout}>
               Keluar
             </button>
@@ -71,7 +75,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/aset" element={<AssetList />} />
             <Route path="/aset/new" element={<AssetForm />} />
-            <Route path="/aset/status" element={<AssetStatusList />} />
+            <Route path="/aset/status" element={<Navigate to="/aset?tab=status" replace />} />
             <Route path="/aset/status/new" element={<AssetStatusForm />} />
             <Route path="/aset/:id" element={<AssetForm />} />
             <Route path="/produksi" element={<ProductionList />} />
@@ -83,10 +87,10 @@ function App() {
             <Route path="/transaksi" element={<TransactionList />} />
             <Route path="/transaksi/new" element={<TransactionForm />} />
             <Route path="/transaksi/:id" element={<TransactionForm />} />
-            <Route path="/hutang" element={<DebtList />} />
+            <Route path="/hutang" element={<Navigate to="/keuangan?tab=hutang" replace />} />
             <Route path="/hutang/new" element={<DebtForm />} />
             <Route path="/hutang/:id" element={<DebtForm />} />
-            <Route path="/keuangan" element={<Financial />} />
+            <Route path="/keuangan" element={<Keuangan />} />
             <Route path="/setting" element={<Settings />} />
           </Routes>
         </main>

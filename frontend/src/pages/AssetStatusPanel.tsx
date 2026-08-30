@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useAuth } from '../context/AuthContext';
 import { ASSET_STATUS_REASON_LABELS, type AssetStatusUpdate } from '../types';
 import { formatDate } from '../utils';
 
-export function AssetStatusList() {
+/**
+ * Body of the "Update Status" sub-view. Rendered inside the Aset destination's tab
+ * (see AssetList); has no page header of its own.
+ */
+export function AssetStatusPanel() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [rows, setRows] = useState<AssetStatusUpdate[]>([]);
@@ -39,13 +42,6 @@ export function AssetStatusList() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1 className="page-title">Update Status Aset</h1>
-        <Link to="/aset/status/new" className="btn btn-primary">
-          + Catat Perubahan
-        </Link>
-      </div>
-
       <p className="hint-text">
         Mati / hilang mengurangi jumlah aktif tapi tidak nilai buku. Dijual mengurangi keduanya
         (nilai buku dikurangi proporsional).

@@ -438,7 +438,11 @@ export function Settings() {
         title="Parameter Perhitungan"
         subtitle="Faktor konversi dan target yang dipakai dashboard (FCR, HDP, estimasi butir, stok)"
       >
+        <h3 className="settings-subhead">Konversi Satuan</h3>
         <KotakSetting isAdmin={isAdmin} />
+        <KgPerKarungSetting isAdmin={isAdmin} />
+
+        <h3 className="settings-subhead">Target Produksi</h3>
         <ScalarSetting
           title="Berat Rata-rata 1 Butir Telur (kg)"
           hint={(v) => `Default berat per butir: ${v ?? '...'} kg. Dipakai untuk estimasi jumlah butir & HDP.`}
@@ -464,7 +468,8 @@ export function Settings() {
           save={api.settings.updateFcrTarget}
           allowUnset
         />
-        <KgPerKarungSetting isAdmin={isAdmin} />
+
+        <h3 className="settings-subhead">Keuangan</h3>
         <ScalarSetting
           title="Modal Investor (Rp)"
           hint={(v) => `Modal ditanamkan investor: ${formatRupiah(v ?? 0)}. Dipakai untuk ROI & neraca.`}

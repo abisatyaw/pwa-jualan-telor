@@ -47,7 +47,7 @@ export function AssetStatusForm() {
     setError(null);
     try {
       await api.assetStatus.create({ ...form, reason, notes: form.notes || null });
-      navigate('/aset/status');
+      navigate('/aset?tab=status');
     } catch (e) {
       setError((e as Error).message);
     } finally {

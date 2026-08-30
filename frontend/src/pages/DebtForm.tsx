@@ -57,7 +57,7 @@ export function DebtForm() {
       } else {
         await api.debts.create(payload);
       }
-      navigate('/hutang');
+      navigate('/keuangan?tab=hutang');
     } catch (e) {
       setError((e as Error).message);
     } finally {
