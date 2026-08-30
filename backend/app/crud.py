@@ -324,14 +324,18 @@ def set_hdp_target_percentage(db: Session, value: float) -> float:
 
 def asset_to_out(asset: models.Asset) -> schemas.AssetOut:
     today = date.today()
+    # acquisition_price is per-unit; straight-line depreciation runs on the whole
+    # batch value. For the pre-quantity records (quantity defaults to 1) this is
+    # unchanged.
+    total_acquisition_value = asset.quantity * asset.acquisition_price
     monthly_depreciation = (
-        round(asset.acquisition_price / asset.depreciation_months)
+        round(total_acquisition_value / asset.depreciation_months)
         if asset.depreciation_months > 0
         else 0
     )
     months_elapsed = _months_between(asset.acquisition_date, today)
-    accumulated = min(asset.acquisition_price, monthly_depreciation * months_elapsed)
-    book_value = asset.acquisition_price - accumulated
+    accumulated = min(total_acquisition_value, monthly_depreciation * months_elapsed)
+    book_value = total_acquisition_value - accumulated
     current_age_weeks = None
     if asset.chicken_age_weeks_at_purchase is not None:
         weeks_elapsed = max((today - asset.acquisition_date).days // 7, 0)
@@ -340,6 +344,7 @@ def asset_to_out(asset: models.Asset) -> schemas.AssetOut:
         id=asset.id,
         asset_name=asset.asset_name,
         asset_type=asset.asset_type,
+        quantity=asset.quantity,
         acquisition_price=asset.acquisition_price,
         acquisition_date=asset.acquisition_date,
         depreciation_months=asset.depreciation_months,
@@ -348,6 +353,7 @@ def asset_to_out(asset: models.Asset) -> schemas.AssetOut:
         notes=asset.notes,
         created_at=asset.created_at,
         updated_at=asset.updated_at,
+        total_acquisition_value=total_acquisition_value,
         monthly_depreciation=monthly_depreciation,
         book_value=book_value,
         current_age_weeks=current_age_weeks,
@@ -392,6 +398,22 @@ def delete_asset(db: Session, asset: models.Asset) -> None:
 # ---------- Production ----------
 
 
+def production_to_out(production: models.Production) -> schemas.ProductionOut:
+    avg = production.average_egg_weight_kg or DEFAULT_AVERAGE_EGG_WEIGHT_KG
+    estimated_egg_count = round(production.quantity_kg / avg) if avg > 0 else 0
+    return schemas.ProductionOut(
+        id=production.id,
+        production_date=production.production_date,
+        chicken_group=production.chicken_group,
+        quantity_kg=production.quantity_kg,
+        average_egg_weight_kg=avg,
+        estimated_egg_count=estimated_egg_count,
+        notes=production.notes,
+        created_at=production.created_at,
+        updated_at=production.updated_at,
+    )
+
+
 def get_productions(
     db: Session,
     date_from: date | None = None,
@@ -413,8 +435,15 @@ def get_production(db: Session, production_id: int) -> models.Production | None:
     return db.get(models.Production, production_id)
 
 
+def _production_data(db: Session, payload: schemas.ProductionBase) -> dict:
+    data = payload.model_dump()
+    if data.get("average_egg_weight_kg") is None:
+        data["average_egg_weight_kg"] = get_average_egg_weight_kg(db)
+    return data
+
+
 def create_production(db: Session, payload: schemas.ProductionCreate) -> models.Production:
-    production = models.Production(**payload.model_dump())
+    production = models.Production(**_production_data(db, payload))
     db.add(production)
     db.commit()
     db.refresh(production)
@@ -424,7 +453,7 @@ def create_production(db: Session, payload: schemas.ProductionCreate) -> models.
 def update_production(
     db: Session, production: models.Production, payload: schemas.ProductionUpdate
 ) -> models.Production:
-    for key, value in payload.model_dump().items():
+    for key, value in _production_data(db, payload).items():
         setattr(production, key, value)
     db.commit()
     db.refresh(production)
@@ -544,6 +573,7 @@ def transaction_to_out(transaction: models.DailyTransaction) -> schemas.Transact
         amount=transaction.amount,
         qty=transaction.qty,
         qty_unit=transaction.qty_unit,
+        unit_price=transaction.unit_price,
         feed_type=transaction.feed_type,
         notes=transaction.notes,
         qty_per_group=qty_per_group,
@@ -576,8 +606,15 @@ def get_transaction(db: Session, transaction_id: int) -> models.DailyTransaction
     return db.get(models.DailyTransaction, transaction_id)
 
 
+def _transaction_data(payload: schemas.TransactionBase) -> dict:
+    data = payload.model_dump()
+    if payload.qty is not None and payload.unit_price is not None:
+        data["amount"] = round(payload.qty * payload.unit_price)
+    return data
+
+
 def create_transaction(db: Session, payload: schemas.TransactionCreate) -> models.DailyTransaction:
-    transaction = models.DailyTransaction(**payload.model_dump())
+    transaction = models.DailyTransaction(**_transaction_data(payload))
     db.add(transaction)
     db.commit()
     db.refresh(transaction)
@@ -587,7 +624,7 @@ def create_transaction(db: Session, payload: schemas.TransactionCreate) -> model
 def update_transaction(
     db: Session, transaction: models.DailyTransaction, payload: schemas.TransactionUpdate
 ) -> models.DailyTransaction:
-    for key, value in payload.model_dump().items():
+    for key, value in _transaction_data(payload).items():
         setattr(transaction, key, value)
     db.commit()
     db.refresh(transaction)

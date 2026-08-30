@@ -91,7 +91,9 @@ export function ProductionList() {
                   <div className="card-row">
                     <div>
                       <div className="card-title">{formatDate(p.production_date)}</div>
-                      <div className="card-subtitle">{p.chicken_group}</div>
+                      <div className="card-subtitle">
+                        {p.chicken_group} · ~{p.estimated_egg_count.toLocaleString('id-ID')} butir
+                      </div>
                     </div>
                     <span className="badge badge-active">{p.quantity_kg.toLocaleString('id-ID')} Kg</span>
                   </div>
@@ -114,6 +116,7 @@ export function ProductionList() {
                   <th>Tanggal</th>
                   <th>Kelompok</th>
                   <th className="num">Jumlah (Kg)</th>
+                  <th className="num">Est. Butir</th>
                   <th>Catatan</th>
                   <th></th>
                 </tr>
@@ -124,6 +127,7 @@ export function ProductionList() {
                     <td>{formatDate(p.production_date)}</td>
                     <td>{p.chicken_group}</td>
                     <td className="num">{p.quantity_kg.toLocaleString('id-ID')}</td>
+                    <td className="num">{p.estimated_egg_count.toLocaleString('id-ID')}</td>
                     <td>{p.notes || '-'}</td>
                     <td>
                       <div className="card-actions">

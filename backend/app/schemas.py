@@ -90,6 +90,8 @@ class DropdownOptionOut(BaseModel):
 class AssetBase(BaseModel):
     asset_name: str = Field(min_length=1)
     asset_type: str = Field(min_length=1)
+    quantity: int = Field(default=1, gt=0)
+    # per-unit price; the depreciable basis is quantity * acquisition_price
     acquisition_price: int = Field(ge=0)
     acquisition_date: date
     depreciation_months: int = Field(ge=0, default=0)
@@ -112,6 +114,7 @@ class AssetOut(AssetBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    total_acquisition_value: int
     monthly_depreciation: int
     book_value: int
     current_age_weeks: int | None = None
@@ -124,6 +127,8 @@ class ProductionBase(BaseModel):
     production_date: date
     chicken_group: str = Field(min_length=1)
     quantity_kg: float = Field(ge=0)
+    # average weight of one egg in kg; None on input means "use the current setting"
+    average_egg_weight_kg: float | None = Field(default=None, gt=0)
     notes: str | None = None
 
 
@@ -139,6 +144,8 @@ class ProductionOut(ProductionBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    average_egg_weight_kg: float
+    estimated_egg_count: int
     created_at: datetime
     updated_at: datetime
 
@@ -186,9 +193,11 @@ class SaleOut(SaleBase):
 class TransactionBase(BaseModel):
     transaction_date: date
     category: str = Field(min_length=1)
+    # when qty and unit_price are both given, the server recomputes amount = qty * unit_price
     amount: int = Field(ge=0)
     qty: float | None = Field(default=None, ge=0)
     qty_unit: str | None = None
+    unit_price: int | None = Field(default=None, ge=0)
     feed_type: str | None = None
     notes: str | None = None
 

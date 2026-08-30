@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { SearchableSelect } from '../components/SearchableSelect';
 import type { TransactionInput } from '../types';
-import { todayIso } from '../utils';
+import { formatRupiah, todayIso } from '../utils';
 
 const EMPTY: TransactionInput = {
   transaction_date: todayIso(),
@@ -11,6 +11,7 @@ const EMPTY: TransactionInput = {
   amount: 0,
   qty: null,
   qty_unit: null,
+  unit_price: null,
   feed_type: null,
   notes: '',
 };
@@ -46,6 +47,7 @@ export function TransactionForm() {
           amount: t.amount,
           qty: t.qty,
           qty_unit: t.qty_unit,
+          unit_price: t.unit_price,
           feed_type: t.feed_type,
           notes: t.notes ?? '',
         })
@@ -71,6 +73,8 @@ export function TransactionForm() {
   const needsQty = form.category in QTY_CATEGORIES;
   const isPakan = form.category === 'Pakan';
   const qtyPerGroup = isPakan && form.qty ? Math.round((form.qty / 2) * 100) / 100 : null;
+  const computedAmount =
+    form.qty != null && form.unit_price != null ? Math.round(form.qty * form.unit_price) : null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -81,7 +85,11 @@ export function TransactionForm() {
     setSaving(true);
     setError(null);
     try {
-      const payload: TransactionInput = { ...form, notes: form.notes || null };
+      const payload: TransactionInput = {
+        ...form,
+        amount: computedAmount ?? form.amount,
+        notes: form.notes || null,
+      };
       if (isEdit) {
         await api.transactions.update(Number(id), payload);
       } else {
@@ -144,10 +152,22 @@ export function TransactionForm() {
                 type="number"
                 inputMode="decimal"
                 min={0}
-                step="0.1"
+                step="0.001"
                 value={form.qty ?? ''}
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => update('qty', e.target.value === '' ? null : Number(e.target.value))}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Harga Satuan (Rp)</label>
+              <input
+                className="form-control"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={form.unit_price ?? ''}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => update('unit_price', e.target.value === '' ? null : Number(e.target.value))}
               />
             </div>
           </div>
@@ -159,16 +179,26 @@ export function TransactionForm() {
         )}
 
         <div className="form-group">
-          <label className="form-label">Biaya (Rp)</label>
+          <label className="form-label">Biaya Total (Rp)</label>
           <input
             className="form-control"
-            type="number"
+            type={computedAmount === null ? 'number' : 'text'}
             inputMode="numeric"
             min={0}
-            value={form.amount === 0 ? '' : form.amount}
+            readOnly={computedAmount !== null}
+            value={
+              computedAmount !== null
+                ? formatRupiah(computedAmount)
+                : form.amount === 0
+                  ? ''
+                  : form.amount
+            }
             onFocus={(e) => e.target.select()}
             onChange={(e) => update('amount', e.target.value === '' ? 0 : Number(e.target.value))}
           />
+          {computedAmount !== null && (
+            <p className="hint-text">Otomatis: {form.qty} × {formatRupiah(form.unit_price ?? 0)}.</p>
+          )}
         </div>
 
         <div className="form-group">

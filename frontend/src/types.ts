@@ -31,6 +31,7 @@ export interface UserCreateInput {
 export interface AssetInput {
   asset_name: string;
   asset_type: string;
+  quantity: number;
   acquisition_price: number;
   acquisition_date: string;
   depreciation_months: number;
@@ -43,6 +44,7 @@ export interface Asset extends AssetInput {
   id: number;
   created_at: string;
   updated_at: string;
+  total_acquisition_value: number;
   monthly_depreciation: number;
   book_value: number;
   current_age_weeks: number | null;
@@ -54,11 +56,14 @@ export interface ProductionInput {
   production_date: string;
   chicken_group: string;
   quantity_kg: number;
+  average_egg_weight_kg: number | null;
   notes: string | null;
 }
 
 export interface Production extends ProductionInput {
   id: number;
+  average_egg_weight_kg: number;
+  estimated_egg_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -100,6 +105,7 @@ export interface TransactionInput {
   amount: number;
   qty: number | null;
   qty_unit: string | null;
+  unit_price: number | null;
   feed_type: string | null;
   notes: string | null;
 }

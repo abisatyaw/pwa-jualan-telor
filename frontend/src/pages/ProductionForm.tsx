@@ -9,6 +9,7 @@ const EMPTY: ProductionInput = {
   production_date: todayIso(),
   chicken_group: '',
   quantity_kg: 0,
+  average_egg_weight_kg: null,
   notes: '',
 };
 
@@ -20,9 +21,11 @@ export function ProductionForm() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [groupOptions, setGroupOptions] = useState<string[]>([]);
+  const [defaultEggWeight, setDefaultEggWeight] = useState(0.055);
 
   useEffect(() => {
     api.settings.listOptions('chicken_group').then((opts) => setGroupOptions(opts.map((o) => o.value)));
+    api.settings.getAverageEggWeight().then((r) => setDefaultEggWeight(r.value));
   }, []);
 
   useEffect(() => {
@@ -32,11 +35,15 @@ export function ProductionForm() {
           production_date: p.production_date,
           chicken_group: p.chicken_group,
           quantity_kg: p.quantity_kg,
+          average_egg_weight_kg: p.average_egg_weight_kg,
           notes: p.notes ?? '',
         })
       );
     }
   }, [id, isEdit]);
+
+  const eggWeight = form.average_egg_weight_kg ?? defaultEggWeight;
+  const estimatedEggs = eggWeight > 0 ? Math.round(form.quantity_kg / eggWeight) : 0;
 
   function update<K extends keyof ProductionInput>(key: K, value: ProductionInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -93,19 +100,41 @@ export function ProductionForm() {
           </div>
         </div>
 
-        <div className="form-group">
-          <label className="form-label">Jumlah Produksi (Kg)</label>
-          <input
-            className="form-control"
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step="0.1"
-            value={form.quantity_kg === 0 ? '' : form.quantity_kg}
-            onFocus={(e) => e.target.select()}
-            onChange={(e) => update('quantity_kg', e.target.value === '' ? 0 : Number(e.target.value))}
-          />
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Jumlah Produksi (Kg)</label>
+            <input
+              className="form-control"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="0.001"
+              value={form.quantity_kg === 0 ? '' : form.quantity_kg}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => update('quantity_kg', e.target.value === '' ? 0 : Number(e.target.value))}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Berat Rata-rata 1 Butir (Kg)</label>
+            <input
+              className="form-control"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="0.001"
+              placeholder={String(defaultEggWeight)}
+              value={form.average_egg_weight_kg ?? ''}
+              onChange={(e) =>
+                update('average_egg_weight_kg', e.target.value === '' ? null : Number(e.target.value))
+              }
+            />
+          </div>
         </div>
+
+        <p className="hint-text">
+          Estimasi jumlah butir: <strong>{estimatedEggs.toLocaleString('id-ID')}</strong> (dari{' '}
+          {form.average_egg_weight_kg == null ? `default ${defaultEggWeight}` : eggWeight} kg/butir)
+        </p>
 
         <div className="form-group">
           <label className="form-label">Catatan</label>
