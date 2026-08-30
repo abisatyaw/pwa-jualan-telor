@@ -34,20 +34,37 @@ from uvicorn on port 8001) and `run-frontend.cmd` (Vite dev server only, for hot
 
 ## Branching & PRs
 
-**Never commit or push directly to `main` or `develop`.** Both are protected and drive deploys
-(`develop` → auto-deploy to testing, `main` → manual production deploy — see *Production deploy
-topology* below). Direct pushes are also rejected by the remote.
+Two long-lived branches:
+
+- **`main` — source of truth / production.** *Off-limits to the agent.* Never open a PR to `main`,
+  never merge into `main`, never push to `main`. Promoting `develop → main` is **exclusively the
+  repo owner's job**: they test the merged `develop` branch live, decide if it's ready, and do the
+  `main` merge and production deploy themselves. Do not open `develop → main` PRs, do not bring it
+  up as a next step — it is not the agent's concern.
+- **`develop` — integration branch.** Every agent change lands here, via PR. Merging a PR into
+  `develop` auto-deploys to the testing environment.
+
+**Never commit or push directly to `main` or `develop`** — both are protected and the remote
+rejects direct pushes. All work goes through a branch + PR into `develop`.
 
 Workflow for every change, no matter how small:
 1. Branch off `develop`: `git checkout develop && git pull && git checkout -b <type>/<short-name>`
    where `<type>` is `feat` / `fix` / `chore` / `docs`.
 2. Commit and push that branch (`git push -u origin <branch>`).
-3. Open a PR **into `develop`**. Merging it deploys to testing automatically.
-4. Promote to production separately: a `develop` → `main` PR, then manually dispatch the
-   "Deploy Production" workflow.
+3. Open a PR **with `--base develop`**. That is where the agent's responsibility ends — the owner
+   takes it from there (review, merge to `develop`, and eventually to `main`).
 
 One feature or fix per branch/PR so it can be reviewed, tested, and reverted in isolation — don't
 bundle unrelated changes. Only create a commit or push when the user asks.
+
+### Stacked PRs
+
+When a change builds on another branch that hasn't merged yet, open its PR with that branch as the
+base (`gh pr create --base <parent-branch>`) — an ordinary GitHub PR with a non-default base. Once
+the parent merges into `develop`, rebase the child onto `develop`
+(`git rebase --onto develop <parent-branch> <child-branch>`) and the PR retargets automatically.
+Do **not** use `gh stack` / GitHub Stacks here: it pins the bottom PR of a stack to the repo's
+default branch (`main`), which this workflow forbids.
 
 ### Commit & PR messages
 
@@ -119,4 +136,5 @@ place HTTP calls are made — `API_BASE` points at `http://<host>:8001/api` in d
 (`main` for production, `develop` for testing) before restarting its systemd service. GitHub Actions
 (`.github/workflows/deploy-*.yml`) SSH into the VPS and invoke a remote `deploy` command on push to
 `develop` (testing, automatic) or manual dispatch on `main` (production). `DATABASE_URL` env var
-overrides the default SQLite path (`backend/app.db`) — see `database.py`.
+overrides the default SQLite path (`backend/app.db`) — see `database.py`. The `main`/production half
+of this is owner-operated only (see *Branching & PRs*).
