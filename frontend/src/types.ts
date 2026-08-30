@@ -199,6 +199,23 @@ export interface StockPosition {
   egg_prices: EggPrice[];
 }
 
+export interface MetricPoint {
+  label: string;
+  value: number;
+}
+
+export interface FcrSummary {
+  value: number | null;
+  target: number | null;
+  trend: MetricPoint[];
+}
+
+export interface HdpSummary {
+  value: number | null;
+  target: number;
+  trend: MetricPoint[];
+}
+
 export interface DashboardOverview {
   production: ProductionSummary;
   weekly_transactions: WeeklyTransactionRow[];
@@ -206,6 +223,8 @@ export interface DashboardOverview {
   total_receivable: number;
   debts_outstanding: number;
   stock: StockPosition;
+  fcr: FcrSummary;
+  hdp: HdpSummary;
   expense_total: number;
   sales_total: number;
 }

@@ -310,6 +310,26 @@ class StockPosition(BaseModel):
     egg_prices: list[EggPriceOut]
 
 
+class MetricPoint(BaseModel):
+    label: str
+    value: float
+
+
+class FcrSummary(BaseModel):
+    # feed consumed (kg) / eggs produced (kg) for the selected period; None when
+    # there is no production to divide by
+    value: float | None
+    target: float | None  # from the fcr_target setting; None = not configured
+    trend: list[MetricPoint]  # one point per month in range
+
+
+class HdpSummary(BaseModel):
+    # mean Hen Day Production % over the selected period
+    value: float | None
+    target: float  # hdp_target_percentage setting (default 85)
+    trend: list[MetricPoint]
+
+
 class DashboardOverview(BaseModel):
     production: ProductionSummary
     weekly_transactions: list[WeeklyTransactionRow]
@@ -317,5 +337,7 @@ class DashboardOverview(BaseModel):
     total_receivable: int
     debts_outstanding: int
     stock: StockPosition
+    fcr: FcrSummary
+    hdp: HdpSummary
     expense_total: int
     sales_total: int

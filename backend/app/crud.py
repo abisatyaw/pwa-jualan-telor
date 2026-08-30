@@ -854,6 +854,111 @@ def get_stock_position(db: Session) -> schemas.StockPosition:
     )
 
 
+# ---------- FCR / HDP analytics ----------
+
+FEED_CATEGORY = "Pakan"
+
+
+def _months_in_range(date_from: date, end: date):
+    """Yield (year, month, clamped_start, clamped_end) for each calendar month the range touches."""
+    import calendar
+
+    year, month = date_from.year, date_from.month
+    while (year, month) <= (end.year, end.month):
+        last = calendar.monthrange(year, month)[1]
+        month_start, month_end = date(year, month, 1), date(year, month, last)
+        yield year, month, max(month_start, date_from), min(month_end, end)
+        month = month + 1 if month < 12 else 1
+        year = year if month != 1 else year + 1
+
+
+def egg_production_kg(db: Session, date_from: date, date_to: date) -> float:
+    return sum(p.quantity_kg for p in get_productions(db, date_from=date_from, date_to=date_to))
+
+
+def feed_consumption_kg(db: Session, date_from: date, date_to: date) -> float:
+    """Feed transactions' qty, in kg. (FB-017 karung→kg conversion is deferred, feed qty is kg.)"""
+    stmt = select(models.DailyTransaction).where(
+        models.DailyTransaction.category == FEED_CATEGORY,
+        models.DailyTransaction.transaction_date >= date_from,
+        models.DailyTransaction.transaction_date <= date_to,
+    )
+    return sum(t.qty or 0.0 for t in db.scalars(stmt))
+
+
+def active_chicken_count(db: Session, as_of: date) -> int:
+    """ADR 0005: Ayam assets acquired on/before `as_of`, minus dead/sold/missing
+    reductions dated on/before `as_of`."""
+    acquired = db.scalar(
+        select(func.coalesce(func.sum(models.Asset.quantity), 0)).where(
+            models.Asset.asset_type == "Ayam",
+            models.Asset.acquisition_date <= as_of,
+        )
+    )
+    reduced = db.scalar(
+        select(func.coalesce(func.sum(models.AssetStatusUpdate.quantity_change), 0))
+        .join(models.Asset, models.AssetStatusUpdate.asset_id == models.Asset.id)
+        .where(
+            models.Asset.asset_type == "Ayam",
+            models.AssetStatusUpdate.update_date <= as_of,
+        )
+    )
+    return max(int(acquired or 0) - int(reduced or 0), 0)
+
+
+def _estimated_eggs(db: Session, date_from: date, date_to: date) -> float:
+    default_avg = get_average_egg_weight_kg(db)
+    total = 0.0
+    for p in get_productions(db, date_from=date_from, date_to=date_to):
+        avg = p.average_egg_weight_kg or default_avg
+        if avg > 0:
+            total += p.quantity_kg / avg
+    return total
+
+
+def get_fcr_summary(
+    db: Session, period: str, custom_from: date | None, custom_to: date | None
+) -> schemas.FcrSummary:
+    date_from, date_to = _period_range(period, custom_from, custom_to)
+    feed, eggs = feed_consumption_kg(db, date_from, date_to), egg_production_kg(db, date_from, date_to)
+    trend = []
+    for year, month, month_start, month_end in _months_in_range(date_from, date_to):
+        m_eggs = egg_production_kg(db, month_start, month_end)
+        if m_eggs > 0:
+            m_feed = feed_consumption_kg(db, month_start, month_end)
+            trend.append(schemas.MetricPoint(label=f"{year}-{month:02d}", value=round(m_feed / m_eggs, 3)))
+    return schemas.FcrSummary(
+        value=round(feed / eggs, 3) if eggs > 0 else None,
+        target=get_fcr_target(db),
+        trend=trend,
+    )
+
+
+def get_hdp_summary(
+    db: Session, period: str, custom_from: date | None, custom_to: date | None
+) -> schemas.HdpSummary:
+    date_from, date_to = _period_range(period, custom_from, custom_to)
+    points: list[schemas.MetricPoint] = []
+    if (date_to - date_from).days <= 62:
+        day = date_from
+        while day <= date_to:
+            eggs, hens = _estimated_eggs(db, day, day), active_chicken_count(db, day)
+            if hens > 0 and eggs > 0:
+                points.append(schemas.MetricPoint(label=day.strftime("%Y-%m-%d"), value=round(eggs / hens * 100, 1)))
+            day += timedelta(days=1)
+    else:
+        for year, month, month_start, month_end in _months_in_range(date_from, date_to):
+            eggs = _estimated_eggs(db, month_start, month_end)
+            hens = active_chicken_count(db, month_end)
+            days = (month_end - month_start).days + 1
+            if hens > 0 and eggs > 0:
+                points.append(
+                    schemas.MetricPoint(label=f"{year}-{month:02d}", value=round(eggs / days / hens * 100, 1))
+                )
+    mean = round(sum(p.value for p in points) / len(points), 1) if points else None
+    return schemas.HdpSummary(value=mean, target=get_hdp_target_percentage(db), trend=points)
+
+
 def get_dashboard_overview(
     db: Session, period: str, custom_from: date | None, custom_to: date | None
 ) -> schemas.DashboardOverview:
@@ -870,6 +975,8 @@ def get_dashboard_overview(
         total_receivable=sum(r.remaining_amount for r in receivables),
         debts_outstanding=debts_outstanding,
         stock=get_stock_position(db),
+        fcr=get_fcr_summary(db, period, custom_from, custom_to),
+        hdp=get_hdp_summary(db, period, custom_from, custom_to),
         expense_total=sum(t.amount for t in period_transactions),
         sales_total=sum(s.total_price for s in period_sales),
     )
