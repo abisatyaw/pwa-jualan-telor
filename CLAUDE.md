@@ -32,6 +32,33 @@ There is no frontend test suite configured.
 Local full-stack run on Windows: `deploy.bat` (builds frontend, sets up backend venv, serves everything
 from uvicorn on port 8001) and `run-frontend.cmd` (Vite dev server only, for hot-reload frontend work).
 
+## Branching & PRs
+
+**Never commit or push directly to `main` or `develop`.** Both are protected and drive deploys
+(`develop` → auto-deploy to testing, `main` → manual production deploy — see *Production deploy
+topology* below). Direct pushes are also rejected by the remote.
+
+Workflow for every change, no matter how small:
+1. Branch off `develop`: `git checkout develop && git pull && git checkout -b <type>/<short-name>`
+   where `<type>` is `feat` / `fix` / `chore` / `docs`.
+2. Commit and push that branch (`git push -u origin <branch>`).
+3. Open a PR **into `develop`**. Merging it deploys to testing automatically.
+4. Promote to production separately: a `develop` → `main` PR, then manually dispatch the
+   "Deploy Production" workflow.
+
+One feature or fix per branch/PR so it can be reviewed, tested, and reverted in isolation — don't
+bundle unrelated changes. Only create a commit or push when the user asks.
+
+### Commit & PR messages
+
+- **Do not add a `Co-Authored-By: Claude` (or any AI/agent) trailer** to commits, and do not add a
+  "Generated with Claude Code" line to PR bodies. Commits are authored under the human's name only.
+- Use short, imperative, Conventional-Commits-style subjects: `feat: …`, `fix: …`, `chore: …`,
+  `docs: …`, `refactor: …` — lowercase, no trailing period, ≤ ~72 chars.
+- Body (when needed) explains *why*, wrapped ~72 cols. Reference feedback item IDs where relevant
+  (e.g. `AUTH-004`).
+- Keep each commit a single coherent change; split unrelated edits into separate commits.
+
 ## Architecture
 
 **Domain model → one router per resource.** Each of `assets`, `production`, `sales`, `transactions`
