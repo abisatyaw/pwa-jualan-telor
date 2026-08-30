@@ -577,9 +577,6 @@ def delete_sale(db: Session, sale: models.Sale) -> None:
 
 
 def transaction_to_out(transaction: models.DailyTransaction) -> schemas.TransactionOut:
-    qty_per_group = None
-    if transaction.category.strip().lower() == "pakan" and transaction.qty is not None:
-        qty_per_group = round(transaction.qty / 2, 2)
     return schemas.TransactionOut(
         id=transaction.id,
         transaction_date=transaction.transaction_date,
@@ -590,7 +587,6 @@ def transaction_to_out(transaction: models.DailyTransaction) -> schemas.Transact
         unit_price=transaction.unit_price,
         feed_type=transaction.feed_type,
         notes=transaction.notes,
-        qty_per_group=qty_per_group,
         created_at=transaction.created_at,
         updated_at=transaction.updated_at,
     )
@@ -877,13 +873,26 @@ def egg_production_kg(db: Session, date_from: date, date_to: date) -> float:
 
 
 def feed_consumption_kg(db: Session, date_from: date, date_to: date) -> float:
-    """Feed transactions' qty, in kg. (FB-017 karung→kg conversion is deferred, feed qty is kg.)"""
+    """Feed transactions converted to kg (FB-017).
+
+    Feed qty is recorded in karung; `kg_per_karung:<feed_type>` (a Setting, 0
+    until an admin fills it) is the conversion factor. A transaction with an
+    unset factor or missing feed_type contributes 0 kg.
+    """
     stmt = select(models.DailyTransaction).where(
         models.DailyTransaction.category == FEED_CATEGORY,
         models.DailyTransaction.transaction_date >= date_from,
         models.DailyTransaction.transaction_date <= date_to,
     )
-    return sum(t.qty or 0.0 for t in db.scalars(stmt))
+    factors: dict[str, float] = {}
+    total = 0.0
+    for t in db.scalars(stmt):
+        if not t.qty or not t.feed_type:
+            continue
+        if t.feed_type not in factors:
+            factors[t.feed_type] = get_kg_per_karung(db, t.feed_type)
+        total += t.qty * factors[t.feed_type]
+    return total
 
 
 def active_chicken_count(db: Session, as_of: date) -> int:
@@ -924,11 +933,11 @@ def get_fcr_summary(
     trend = []
     for year, month, month_start, month_end in _months_in_range(date_from, date_to):
         m_eggs = egg_production_kg(db, month_start, month_end)
-        if m_eggs > 0:
-            m_feed = feed_consumption_kg(db, month_start, month_end)
+        m_feed = feed_consumption_kg(db, month_start, month_end)
+        if m_eggs > 0 and m_feed > 0:
             trend.append(schemas.MetricPoint(label=f"{year}-{month:02d}", value=round(m_feed / m_eggs, 3)))
     return schemas.FcrSummary(
-        value=round(feed / eggs, 3) if eggs > 0 else None,
+        value=round(feed / eggs, 3) if eggs > 0 and feed > 0 else None,
         target=get_fcr_target(db),
         trend=trend,
     )

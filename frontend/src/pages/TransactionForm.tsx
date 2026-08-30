@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { SearchableSelect } from '../components/SearchableSelect';
-import type { TransactionInput } from '../types';
-import { formatRupiah, todayIso } from '../utils';
+import type { KgPerKarungRow, TransactionInput } from '../types';
+import { formatQty, formatRupiah, todayIso } from '../utils';
 
 const EMPTY: TransactionInput = {
   transaction_date: todayIso(),
@@ -17,7 +17,7 @@ const EMPTY: TransactionInput = {
 };
 
 const QTY_CATEGORIES: Record<string, string> = {
-  Pakan: 'Kg',
+  Pakan: 'Karung',
   'Pembelian Telor': 'Kg',
   'Pembelian Ayam': 'Ekor',
   'Pembelian Kotak Telur': 'Pcs',
@@ -32,10 +32,12 @@ export function TransactionForm() {
   const [saving, setSaving] = useState(false);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [feedTypeOptions, setFeedTypeOptions] = useState<string[]>([]);
+  const [kgPerKarung, setKgPerKarung] = useState<KgPerKarungRow[]>([]);
 
   useEffect(() => {
     api.settings.listOptions('transaction_category').then((opts) => setCategoryOptions(opts.map((o) => o.value)));
     api.settings.listOptions('feed_type').then((opts) => setFeedTypeOptions(opts.map((o) => o.value)));
+    api.settings.listKgPerKarung().then(setKgPerKarung);
   }, []);
 
   useEffect(() => {
@@ -72,7 +74,8 @@ export function TransactionForm() {
 
   const needsQty = form.category in QTY_CATEGORIES;
   const isPakan = form.category === 'Pakan';
-  const qtyPerGroup = isPakan && form.qty ? Math.round((form.qty / 2) * 100) / 100 : null;
+  const karungFactor = kgPerKarung.find((r) => r.feed_type === form.feed_type)?.value ?? 0;
+  const feedKg = isPakan && form.qty && karungFactor > 0 ? form.qty * karungFactor : null;
   const computedAmount =
     form.qty != null && form.unit_price != null ? Math.round(form.qty * form.unit_price) : null;
 
@@ -172,11 +175,13 @@ export function TransactionForm() {
             </div>
           </div>
         )}
-        {isPakan && qtyPerGroup !== null && (
+        {isPakan && form.qty ? (
           <p className="hint-text">
-            Dibagi 2 kelompok untuk analisa FCR: {qtyPerGroup} Kg per kelompok.
+            {feedKg !== null
+              ? `Setara ${formatQty(feedKg)} kg (${karungFactor} kg/karung) — dipakai untuk FCR.`
+              : 'Faktor kg/karung untuk jenis pakan ini belum diatur di Setting → Parameter Perhitungan.'}
           </p>
-        )}
+        ) : null}
 
         <div className="form-group">
           <label className="form-label">Biaya Total (Rp)</label>

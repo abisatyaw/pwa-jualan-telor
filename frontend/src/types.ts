@@ -112,7 +112,6 @@ export interface TransactionInput {
 
 export interface Transaction extends TransactionInput {
   id: number;
-  qty_per_group: number | null;
   created_at: string;
   updated_at: string;
 }

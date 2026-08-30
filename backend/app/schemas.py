@@ -214,7 +214,6 @@ class TransactionOut(TransactionBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    qty_per_group: float | None = None
     created_at: datetime
     updated_at: datetime
 

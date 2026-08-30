@@ -98,11 +98,8 @@ export function TransactionList() {
                     </div>
                     <strong>{formatRupiah(t.amount)}</strong>
                   </div>
-                  {t.qty_per_group !== null && (
-                    <div className="card-subtitle" style={{ marginTop: 6 }}>
-                      {t.feed_type ? `${t.feed_type} · ` : ''}
-                      Per kelompok: {t.qty_per_group} Kg (FCR)
-                    </div>
+                  {t.feed_type && (
+                    <div className="card-subtitle" style={{ marginTop: 6 }}>{t.feed_type}</div>
                   )}
                 </Link>
                 {isAdmin && (
