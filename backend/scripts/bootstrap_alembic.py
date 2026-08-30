@@ -10,6 +10,11 @@ exactly) so `upgrade head` then only applies genuinely new migrations.
 
 A brand-new, genuinely empty database is left untouched so the baseline
 migration creates its tables normally.
+
+An `alembic_version` table that exists but holds no row (left behind by an
+`alembic` command that ran before this script on a pre-Alembic database) is
+treated the same as a missing one - otherwise `upgrade head` would restart from
+base and fail on the already-existing tables.
 """
 
 import subprocess
@@ -19,7 +24,7 @@ from pathlib import Path
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
 
-from sqlalchemy import inspect  # noqa: E402
+from sqlalchemy import inspect, text  # noqa: E402
 
 from app.database import engine  # noqa: E402
 
@@ -29,8 +34,12 @@ BASELINE_REVISION = "0001"
 def main() -> None:
     tables = set(inspect(engine).get_table_names())
     if "alembic_version" in tables:
-        print("bootstrap_alembic: already tracked, nothing to do")
-        return
+        with engine.connect() as conn:
+            current = conn.execute(text("SELECT version_num FROM alembic_version")).first()
+        if current is not None:
+            print("bootstrap_alembic: already tracked, nothing to do")
+            return
+        print("bootstrap_alembic: empty alembic_version table, treating as pre-Alembic")
     if "users" not in tables:
         print("bootstrap_alembic: empty database, letting the baseline migration create tables")
         return
