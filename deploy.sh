@@ -34,7 +34,7 @@ CURRENT_BRANCH="$(git -C "$APP_DIR" rev-parse --abbrev-ref HEAD)"
 
 log "=== deploying $APP_NAME [$ENVIRONMENT] branch=$CURRENT_BRANCH service=$SERVICE port=$PORT"
 
-log "1/7 updating source"
+log "1/8 updating source"
 git -C "$APP_DIR" fetch --prune origin || fail "git fetch failed - not touching the running service"
 if git -C "$APP_DIR" ls-remote --exit-code --heads origin "$CURRENT_BRANCH" >/dev/null 2>&1; then
   git -C "$APP_DIR" pull --ff-only origin "$CURRENT_BRANCH" || fail "git pull failed (diverged?) - not touching the running service"
@@ -42,23 +42,29 @@ else
   log "branch '$CURRENT_BRANCH' not on origin yet - using current local checkout"
 fi
 
-log "2/7 python dependencies"
+log "2/8 python dependencies"
 "$APP_DIR/.venv/bin/pip" install -q -r "$APP_DIR/backend/requirements.txt" || fail "pip install failed - not restarting"
 
-log "3/7 frontend dependencies"
+log "3/8 database migrations"
+cd "$APP_DIR/backend"
+"$APP_DIR/.venv/bin/python" scripts/bootstrap_alembic.py || fail "alembic bootstrap failed - not restarting"
+"$APP_DIR/.venv/bin/python" -m alembic upgrade head || fail "alembic upgrade failed - not restarting"
+cd "$APP_DIR"
+
+log "4/8 frontend dependencies"
 cd "$APP_DIR/frontend"
 npm ci --silent || fail "npm ci failed - not restarting"
 
-log "4/7 building frontend"
+log "5/8 building frontend"
 npm run build --silent || fail "frontend build failed - not restarting"
 
-log "5/7 validating build"
+log "6/8 validating build"
 [ -s "$APP_DIR/frontend/dist/index.html" ] || fail "dist/index.html missing or empty - not restarting"
 
-log "6/7 restarting $SERVICE"
+log "7/8 restarting $SERVICE"
 sudo systemctl restart "$SERVICE.service"
 
-log "7/7 health check"
+log "8/8 health check"
 HEALTH_OK=""
 for i in $(seq 1 15); do
   sleep 2

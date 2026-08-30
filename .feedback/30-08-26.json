@@ -1,0 +1,602 @@
+{
+  "feedback_status": "open for Agent Review",
+  "project": {
+    "current_name": "Telur Tracker",
+    "new_name": "Cinz Farm",
+    "document_type": "user_feedback_handoff",
+    "target_consumer": "AI software engineering agent",
+    "iteration": "v1.0",
+    "primary_goal": "Evolve the application from basic farm record keeping into an operational and financial monitoring system for an egg farm."
+  },
+  "product_direction": {
+    "current_state": [
+      "no version tracker / tagging shown",
+      "Basic production tracking",
+      "Basic sales tracking",
+      "Basic transaction tracking",
+      "Basic asset tracking",
+      "User login and access"
+    ],
+    "desired_state": [
+      "show version on login screen",
+      "Farm operational dashboard",
+      "Production analytics",
+      "Feed efficiency monitoring",
+      "Hen productivity monitoring",
+      "Asset lifecycle management",
+      "Financial tracking",
+      "Role-based access control"
+    ]
+  },
+  "priorities": {
+    "P0": [
+      "Show version on login screen",
+      "Production analytics",
+      "FCR calculation and trend",
+      "HDP calculation and trend",
+      "Production data improvements",
+      "Transaction quantity and unit price",
+      "Feed unit handling"
+    ],
+    "P1": [
+      "Asset lifecycle improvements",
+      "Asset status updates",
+      "User permissions",
+      "Branding and date formatting",
+      "System-wide decimal precision"
+    ]
+  },
+  "requirements": {
+    "general": [
+      {
+        "id": "GEN-001",
+        "title": "Rename application",
+        "type": "ui",
+        "priority": "P1",
+        "requirement": "Replace the application display name 'Telur Tracker' with 'Cinz Farm'.",
+        "acceptance_criteria": [
+          "Main application header displays 'Cinz Farm'.",
+          "No user-facing primary header still displays 'Telur Tracker'."
+        ]
+      },
+      {
+        "id": "GEN-002",
+        "title": "Localized date format",
+        "type": "ui",
+        "priority": "P1",
+        "requirement": "Display dates using a localized Indonesian human-readable format.",
+        "example": "09 Agustus 2026",
+        "acceptance_criteria": [
+          "User-facing dates follow day-month-name-year format.",
+          "Month names are localized appropriately."
+        ]
+      },
+      {
+        "id": "GEN-003",
+        "title": "System-wide numeric precision",
+        "type": "data_and_ui",
+        "priority": "P1",
+        "requirement": "Values representing production quantity and other fractional quantities must support 3 decimal places.",
+        "examples": [
+          "10.125 kg",
+          "5.500"
+        ],
+        "implementation_note": "Implement this consistently at database, validation, API, and frontend display levels rather than patching individual forms."
+      }
+    ],
+    "authentication_and_authorization": [
+      {
+        "id": "AUTH-001",
+        "title": "Admin role",
+        "priority": "P1",
+        "requirement": "Admin users have full application access."
+      },
+      {
+        "id": "AUTH-002",
+        "title": "Restricted Cinz user",
+        "priority": "P1",
+        "requirement": "The Cinz user must not be allowed to delete records."
+      },
+      {
+        "id": "AUTH-003",
+        "title": "Standard Mami user",
+        "priority": "P1",
+        "requirement": "Mami is treated as a normal user.",
+        "open_question": "Exact permissions for a normal user are not explicitly defined in the source feedback."
+      },
+      {
+        "id": "AUTH-004",
+        "title": "Fix admin user creation",
+        "priority": "P1",
+        "type": "bugfix",
+        "requirement": "Fix the issue where an admin cannot create another user.",
+        "acceptance_criteria": [
+          "Authenticated admin can create a new user.",
+          "Created user can subsequently authenticate if account creation succeeds.",
+          "Currently admin can't create user for unknown reasons, which must be fixed. and it only shows error [object] [object]",
+          "we assume it fails silently without a clear error message, because of password length or other validation issues. The fix should ensure that the admin receives a clear error message if user creation fails. (remove password requirement for now)"
+        ]
+      }
+    ],
+    "dashboard": [
+      {
+        "id": "DASH-001",
+        "title": "Rename estimated profit",
+        "priority": "P1",
+        "type": "ui",
+        "requirement": "Rename 'Estimasi Profit' to 'Estimasi Margin'."
+      },
+      {
+        "id": "DASH-002",
+        "title": "Weekly egg production chart",
+        "priority": "P0",
+        "requirement": "Provide a histogram or bar chart showing weekly egg production within the selected monthly period.",
+        "example_categories": [
+          "Week 29",
+          "Week 30",
+          "Week 31"
+        ],
+        "acceptance_criteria": [
+          "The selected month is divided into weekly groups.",
+          "Each weekly group displays aggregated production.",
+          "Production values support 3 decimal places."
+        ]
+      },
+      {
+        "id": "DASH-003",
+        "title": "FCR trend",
+        "priority": "P0",
+        "requirement": "Display Feed Conversion Rate as a historical trend.",
+        "formula": {
+          "name": "FCR",
+          "expression": "feed_consumption_kg / egg_production_kg",
+          "numerator": "Total feed consumption in kilograms for the selected period",
+          "denominator": "Total egg production in kilograms for the same period"
+        },
+        "target_from_user_feedback": 0.2,
+        "acceptance_criteria": [
+          "FCR is calculated from feed consumption and production within the same period.",
+          "Dashboard shows historical FCR values.",
+          "The configured target can be visually compared to actual FCR."
+        ],
+        "open_question": "Confirm whether the stated FCR target of 0.2 is correct before treating it as a permanent business rule."
+      },
+      {
+        "id": "DASH-004",
+        "title": "HDP trend",
+        "priority": "P0",
+        "requirement": "Display Hen Day Production as a historical graph.",
+        "formula": {
+          "name": "HDP",
+          "base_expression": "daily_egg_count / total_chickens",
+          "percentage_expression": "(daily_egg_count / total_chickens) * 100"
+        },
+        "target_percentage": 85,
+        "acceptance_criteria": [
+          "HDP can be calculated per day.",
+          "Dashboard displays HDP historical trend.",
+          "A target of greater than 85 percent can be compared against actual performance."
+        ]
+      }
+    ],
+    "production": [
+      {
+        "id": "PROD-001",
+        "title": "Production quantity precision",
+        "priority": "P0",
+        "requirement": "Production quantity in kilograms must support 3 decimal places.",
+        "example": 12.345
+      },
+      {
+        "id": "PROD-002",
+        "title": "Average egg weight",
+        "priority": "P0",
+        "requirement": "Add an input for the average weight of one egg in kilograms.",
+        "example_value_kg": 0.055,
+        "purpose": "Estimate the number of eggs produced from production weight."
+      },
+      {
+        "id": "PROD-003",
+        "title": "Estimated egg count",
+        "priority": "P0",
+        "requirement": "Calculate estimated egg count based on production weight and average egg weight.",
+        "formula": "production_kg / average_egg_weight_kg",
+        "depends_on": [
+          "PROD-001",
+          "PROD-002"
+        ],
+        "used_by": [
+          "DASH-004"
+        ]
+      }
+    ],
+    "sales": [
+      {
+        "id": "SALE-001",
+        "title": "Sales quantity precision",
+        "priority": "P1",
+        "requirement": "Sales quantity must support 3 decimal places."
+      }
+    ],
+    "transactions": [
+      {
+        "id": "TXN-001",
+        "title": "Transaction quantity",
+        "priority": "P0",
+        "requirement": "Add quantity to transaction records."
+      },
+      {
+        "id": "TXN-002",
+        "title": "Unit price",
+        "priority": "P0",
+        "requirement": "Add unit price to transaction records."
+      },
+      {
+        "id": "TXN-003",
+        "title": "Automatic transaction total",
+        "priority": "P0",
+        "requirement": "Calculate transaction total cost automatically.",
+        "formula": "quantity * unit_price",
+        "depends_on": [
+          "TXN-001",
+          "TXN-002"
+        ]
+      },
+      {
+        "id": "TXN-004",
+        "title": "Feed purchase unit",
+        "priority": "P0",
+        "requirement": "For transactions categorized as feed, quantity should be recorded in sacks rather than kilograms.",
+        "unit": "karung"
+      },
+      {
+        "id": "TXN-005",
+        "title": "Feed sack to kilogram conversion",
+        "priority": "P0",
+        "requirement": "Support conversion of feed quantities from sacks to kilograms.",
+        "purpose": "Provide feed consumption data in kilograms for FCR calculation.",
+        "depends_on": [
+          "TXN-004"
+        ],
+        "open_question": "The source feedback does not define how many kilograms are contained in one sack. This should be configurable or explicitly defined."
+      }
+    ],
+    "assets": [
+      {
+        "id": "ASSET-001",
+        "title": "Asset quantity",
+        "priority": "P1",
+        "requirement": "Add quantity when creating an asset."
+      },
+      {
+        "id": "ASSET-002",
+        "title": "Total acquisition value",
+        "priority": "P1",
+        "requirement": "Calculate total acquisition value.",
+        "formula": "quantity * acquisition_price_per_unit"
+      },
+      {
+        "id": "ASSET-003",
+        "title": "Zero book value estimate",
+        "priority": "P1",
+        "requirement": "Display the estimated month and year when an asset's book value reaches zero.",
+        "open_question": "Depreciation method, useful life, residual value, and depreciation start date must already exist or be defined before this can be calculated reliably."
+      },
+      {
+        "id": "ASSET-004",
+        "title": "Asset status history",
+        "priority": "P1",
+        "requirement": "Add a dedicated feature or tab for recording changes in asset status."
+      },
+      {
+        "id": "ASSET-005",
+        "title": "Asset status update fields",
+        "priority": "P1",
+        "required_fields": [
+          "update_date",
+          "asset_id",
+          "quantity_change",
+          "reason"
+        ],
+        "allowed_reasons_from_feedback": [
+          "dead",
+          "sold",
+          "missing"
+        ]
+      },
+      {
+        "id": "ASSET-006",
+        "title": "Asset depreciation behavior",
+        "priority": "P1",
+        "requirement": "Asset reductions must affect accounting differently depending on the reason.",
+        "rules": {
+          "dead": {
+            "reduce_active_asset_quantity": true,
+            "affect_depreciation_book_value": false
+          },
+          "missing": {
+            "reduce_active_asset_quantity": true,
+            "affect_depreciation_book_value": false
+          },
+          "sold": {
+            "reduce_active_asset_quantity": true,
+            "affect_depreciation_book_value": true
+          }
+        },
+        "warning": "The exact accounting mechanics for how a sale changes book value are not fully specified by the source feedback and should not be invented by the implementation agent."
+      }
+    ]
+  },
+  "domain_relationships": {
+    "production_pipeline": {
+      "flow": [
+        "production_kg",
+        "average_egg_weight_kg",
+        "estimated_egg_count",
+        "HDP"
+      ],
+      "formulae": {
+        "estimated_egg_count": "production_kg / average_egg_weight_kg",
+        "HDP_percentage": "(estimated_egg_count / active_chicken_count) * 100"
+      }
+    },
+    "feed_pipeline": {
+      "flow": [
+        "feed_purchase_quantity_karung",
+        "kg_per_karung",
+        "feed_quantity_kg",
+        "FCR"
+      ],
+      "formulae": {
+        "feed_quantity_kg": "feed_purchase_quantity_karung * kg_per_karung",
+        "FCR": "feed_consumption_kg / egg_production_kg"
+      }
+    },
+    "asset_pipeline": {
+      "flow": [
+        "asset_acquisition",
+        "asset_quantity",
+        "asset_status_updates",
+        "active_asset_quantity",
+        "book_value"
+      ]
+    }
+  },
+  "recommended_domain_model": {
+    "principle": "Do not implement each feedback item as an isolated CRUD change. Production, feed, flock/assets, financials, and analytics now depend on each other.",
+    "domains": [
+      {
+        "name": "production",
+        "responsibilities": [
+          "Egg production records",
+          "Production weight",
+          "Average egg weight",
+          "Estimated egg count"
+        ]
+      },
+      {
+        "name": "feed",
+        "responsibilities": [
+          "Feed purchases",
+          "Feed unit conversion",
+          "Feed consumption"
+        ]
+      },
+      {
+        "name": "flock_and_assets",
+        "responsibilities": [
+          "Chicken or asset population",
+          "Asset lifecycle",
+          "Status changes",
+          "Depreciation"
+        ]
+      },
+      {
+        "name": "financials",
+        "responsibilities": [
+          "Transactions",
+          "Sales",
+          "Acquisition value",
+          "Margin-related values"
+        ]
+      },
+      {
+        "name": "analytics",
+        "responsibilities": [
+          "Weekly production aggregation",
+          "FCR",
+          "HDP",
+          "Historical trends"
+        ]
+      }
+    ]
+  },
+  "dependency_graph": [
+    {
+      "from": "production_kg",
+      "to": "estimated_egg_count"
+    },
+    {
+      "from": "average_egg_weight_kg",
+      "to": "estimated_egg_count"
+    },
+    {
+      "from": "estimated_egg_count",
+      "to": "HDP"
+    },
+    {
+      "from": "active_chicken_count",
+      "to": "HDP"
+    },
+    {
+      "from": "feed_purchase_karung",
+      "to": "feed_quantity_kg"
+    },
+    {
+      "from": "kg_per_karung",
+      "to": "feed_quantity_kg"
+    },
+    {
+      "from": "feed_quantity_kg",
+      "to": "FCR"
+    },
+    {
+      "from": "production_kg",
+      "to": "FCR"
+    }
+  ],
+  "implementation_sequence": [
+    {
+      "phase": 1,
+      "name": "Data model foundation",
+      "tasks": [
+        "Review existing database models and migrations.",
+        "Add system-wide decimal precision where required.",
+        "Add transaction quantity and unit price.",
+        "Add production average egg weight.",
+        "Add feed unit conversion data.",
+        "Add asset quantity and asset lifecycle records."
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "Core business calculations",
+      "tasks": [
+        "Implement estimated egg count.",
+        "Implement feed sack to kilogram conversion.",
+        "Implement FCR calculation.",
+        "Implement HDP calculation.",
+        "Implement total acquisition value.",
+        "Implement depreciation zero-date calculation if required inputs exist."
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "Asset lifecycle",
+      "tasks": [
+        "Implement asset status update records.",
+        "Implement dead, sold, and missing reasons.",
+        "Implement active quantity changes.",
+        "Implement reason-specific depreciation behavior."
+      ]
+    },
+    {
+      "phase": 4,
+      "name": "Analytics and dashboard",
+      "tasks": [
+        "Implement weekly monthly-period aggregation.",
+        "Create production histogram.",
+        "Create FCR trend.",
+        "Create HDP trend.",
+        "Add target indicators where appropriate."
+      ]
+    },
+    {
+      "phase": 5,
+      "name": "UX and permissions",
+      "tasks": [
+        "Rename application to Cinz Farm.",
+        "Update margin terminology.",
+        "Implement Indonesian date formatting.",
+        "Apply user permissions.",
+        "Fix admin user creation."
+      ]
+    },
+    {
+      "phase": 6,
+      "name": "Validation and regression testing",
+      "tasks": [
+        "Add backend unit tests for formulas.",
+        "Add authorization tests.",
+        "Add database migration tests.",
+        "Add API tests.",
+        "Verify existing production, sales, transactions, and assets continue to work.",
+        "Verify dashboards against manually calculated sample datasets."
+      ]
+    }
+  ],
+  "agent_instructions": {
+    "working_style": [
+      "Inspect the existing repository before making architectural changes.",
+      "Reuse existing patterns and abstractions where reasonable.",
+      "Do not rewrite working modules unnecessarily.",
+      "Prefer database-backed domain values over frontend-only calculations for business-critical data.",
+      "Keep business formulas centralized and testable.",
+      "Use migrations for database schema changes.",
+      "Preserve backward compatibility with existing records where practical."
+    ],
+    "must_not_assume": [
+      "Do not invent normal-user permissions not specified by the product owner.",
+      "Do not invent kilograms per feed sack.",
+      "Do not invent a depreciation method.",
+      "Do not invent accounting treatment for sold assets beyond the provided requirement.",
+      "Do not silently change existing financial formulas.",
+      "Do not assume the FCR target of 0.2 is universally correct without making it configurable or confirming the domain rule."
+    ],
+    "expected_output_before_implementation": [
+      "Repository assessment",
+      "Affected modules",
+      "Proposed database changes",
+      "Migration strategy",
+      "API changes",
+      "Frontend changes",
+      "Business calculation design",
+      "Testing strategy",
+      "Potential breaking changes"
+    ],
+    "expected_output_after_implementation": [
+      "Summary of changes",
+      "Migration files created",
+      "New or modified endpoints",
+      "New or modified UI components",
+      "Tests added",
+      "Test results",
+      "Remaining open questions",
+      "Known limitations"
+    ]
+  },
+  "open_questions": [
+    {
+      "id": "Q-001",
+      "question": "How many kilograms are contained in one karung of feed?",
+      "blocks": [
+        "Accurate feed conversion",
+        "Accurate FCR calculation"
+      ]
+    },
+    {
+      "id": "Q-002",
+      "question": "Should kilograms per karung be globally configured, configured per feed product, or entered per transaction?"
+    },
+    {
+      "id": "Q-003",
+      "question": "What exact permissions should a normal user have?"
+    },
+    {
+      "id": "Q-004",
+      "question": "What depreciation method is currently used for assets?"
+    },
+    {
+      "id": "Q-005",
+      "question": "How should proceeds from sold assets interact with depreciation and book value?"
+    },
+    {
+      "id": "Q-006",
+      "question": "Is the target FCR of 0.2 confirmed as the intended business target?"
+    },
+    {
+      "id": "Q-007",
+      "question": "Should HDP use an estimated egg count derived from kilograms, or will exact egg count eventually be recorded directly?"
+    }
+  ],
+  "definition_of_done": [
+    "All P0 requirements are implemented and tested.",
+    "Existing historical data remains readable.",
+    "Database migrations run successfully.",
+    "Production, transaction, sales, and asset workflows remain functional.",
+    "FCR and HDP calculations have automated tests.",
+    "Dashboard calculations match manually verified sample data.",
+    "Authorization rules are enforced by the backend, not only hidden in the frontend.",
+    "All unresolved domain assumptions are either configurable or documented rather than hardcoded."
+  ]
+}
