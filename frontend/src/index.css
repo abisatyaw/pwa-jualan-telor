@@ -37,7 +37,46 @@ body {
 }
 
 .top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--color-primary-dark);
+}
+
+/* Nav links live in the bottom bar on mobile; the header keeps brand + gear + logout. */
+.top-nav {
   display: none;
+}
+
+.top-header-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-header-user .hint-text {
+  display: none;
+}
+
+.top-header-user .btn {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.btn-icon-active {
+  background: var(--color-bg);
 }
 
 .page-content {
@@ -86,21 +125,11 @@ body {
 /* Desktop layout */
 @media (min-width: 900px) {
   .top-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     padding: 14px 24px;
-    background: var(--color-surface);
-    border-bottom: 1px solid var(--color-border);
-    position: sticky;
-    top: 0;
-    z-index: 20;
   }
 
   .brand {
-    font-weight: 700;
     font-size: 18px;
-    color: var(--color-primary-dark);
   }
 
   .top-nav {
@@ -123,9 +152,11 @@ body {
   }
 
   .top-header-user {
-    display: flex;
-    align-items: center;
     gap: 10px;
+  }
+
+  .top-header-user .hint-text {
+    display: inline;
   }
 
   .page-content {
@@ -189,6 +220,7 @@ body {
   padding: 12px 18px;
   font-size: 15px;
   font-weight: 600;
+  text-decoration: none;
   cursor: pointer;
   min-height: 44px;
 }
@@ -218,6 +250,7 @@ body {
   border: none;
   cursor: pointer;
   font-size: 16px;
+  text-decoration: none;
   padding: 8px;
   border-radius: 8px;
   min-height: 40px;
@@ -352,6 +385,52 @@ textarea.form-control {
   color: var(--color-text-muted);
   font-size: 12px;
   margin-top: 4px;
+}
+
+/* Dashboard quick-add actions */
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.quick-actions .btn {
+  flex: 1 1 auto;
+  min-height: 40px;
+  padding: 9px 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* In-page tabs (sub-view switcher within one destination) */
+.page-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow-x: auto;
+}
+
+.page-tab {
+  flex: 1 0 auto;
+  white-space: nowrap;
+  border: none;
+  background: transparent;
+  border-radius: 7px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.page-tab-active {
+  background: var(--color-bg);
+  color: var(--color-primary);
 }
 
 /* Search / filter bar */
@@ -508,6 +587,25 @@ textarea.form-control {
   background: none;
   padding: 14px 0;
   margin: 0;
+}
+
+.settings-subhead {
+  margin: 20px 0 0;
+  padding-top: 14px;
+  border-top: 2px solid var(--color-border);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.settings-subhead:first-child {
+  margin-top: 4px;
+}
+
+.settings-subhead + .settings-section {
+  border-top: none;
 }
 
 /* Tables (desktop) */

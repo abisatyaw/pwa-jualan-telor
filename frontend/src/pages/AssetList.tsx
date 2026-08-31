@@ -2,13 +2,49 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { PageTabs, usePageTab, type TabDef } from '../components/PageTabs';
 import { useAuth } from '../context/AuthContext';
 import type { Asset } from '../types';
 import { formatBucketLabel, formatDate, formatRupiah } from '../utils';
+import { AssetStatusPanel } from './AssetStatusPanel';
+
+const TABS: TabDef[] = [
+  { key: 'daftar', label: 'Daftar Aset' },
+  { key: 'status', label: 'Update Status' },
+];
 
 export function AssetList() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const [tab, setTab] = usePageTab(TABS);
+
+  return (
+    <div>
+      <div className="page-header">
+        <h1 className="page-title">Aset</h1>
+        {tab === 'status' ? (
+          <Link to="/aset/status/new" className="btn btn-primary">
+            + Catat Perubahan
+          </Link>
+        ) : (
+          <Link to="/aset/new" className="btn btn-primary">
+            + Tambah Aset
+          </Link>
+        )}
+      </div>
+
+      <PageTabs tabs={TABS} active={tab} onChange={setTab} />
+
+      {tab === 'status' ? (
+        <AssetStatusPanel />
+      ) : (
+        <AssetListBody isAdmin={isAdmin} />
+      )}
+    </div>
+  );
+}
+
+function AssetListBody({ isAdmin }: { isAdmin: boolean }) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [search, setSearch] = useState('');
   const [assetType, setAssetType] = useState('');
@@ -43,19 +79,7 @@ export function AssetList() {
   }
 
   return (
-    <div>
-      <div className="page-header">
-        <h1 className="page-title">Aset</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Link to="/aset/status" className="btn btn-secondary">
-            Update Status
-          </Link>
-          <Link to="/aset/new" className="btn btn-primary">
-            + Tambah Aset
-          </Link>
-        </div>
-      </div>
-
+    <>
       <div className="filter-bar">
         <input
           className="form-control"
@@ -177,6 +201,6 @@ export function AssetList() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />
-    </div>
+    </>
   );
 }
